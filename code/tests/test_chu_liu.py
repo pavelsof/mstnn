@@ -26,8 +26,8 @@ class GraphTestCase(TestCase):
 			(i, j): matrix[i][j]
 			for i in range(size) for j in range(size)}
 		
-		graph = Graph(range(size))
-		graph.create_greedy_edges(scores)
+		graph = Graph(range(size), scores=scores)
+		graph.create_greedy_edges()
 		
 		for parent, child in graph.edges:
 			self.assertEqual(
@@ -47,11 +47,15 @@ class GraphTestCase(TestCase):
 	
 	
 	def test_contract(self):
-		graph = Graph(range(4), [(0, 1), (1, 2), (2, 1), (2, 3)])
-		new_graph, new_scores = graph.contract('c', {
-			(0, 1): 1, (1, 2): 2, (2, 1): 3, (2, 3): 4})
+		graph = Graph(range(4),
+			[(0, 1), (1, 2), (2, 1), (2, 3)],
+			{(0, 1): 1, (1, 2): 2, (2, 1): 3, (2, 3): 4})
+		
+		cycle, new_graph = graph.contract('c')
+		
+		self.assertEqual(cycle, set([1, 2]))
 		
 		self.assertEqual(new_graph.nodes, set([0, 'c', 3]))
 		self.assertEqual(new_graph.edges, set([(0, 'c'), ('c', 3)]))
 		
-		self.assertEqual(new_scores, {(0, 'c'): 1, ('c', 3): 4})
+		self.assertEqual(new_graph.scores, {(0, 'c'): 1, ('c', 3): 4})

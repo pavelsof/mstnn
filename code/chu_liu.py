@@ -4,7 +4,7 @@ import networkx as nx
 
 class Graph:
 	
-	def __init__(self, nodes, edges=[]):
+	def __init__(self, nodes, edges=[], scores={}):
 		"""
 		Constructor. Expects a sequence of the node names that the graph should
 		contain. The node 0 is considered to be the root node, so there must be
@@ -13,18 +13,25 @@ class Graph:
 		The second argument, if provided, should be a sequence of (i, j) tuples
 		where each tuple represents a dependency between nodes i (the head) and
 		j (the dependant).
+		
+		The third argument, if provided, should be a {} with edges as keys and
+		scores as values. Note that all possible edges should be available, not
+		only the ones that graph is inited with.
 		"""
 		if 0 not in nodes:
 			raise ValueError('Could not find node 0')
 		
 		self.nodes = set(nodes)
 		self.edges = set(edges)
+		
+		self.scores = scores
 	
 	
-	def create_greedy_edges(self, scores):
+	def create_greedy_edges(self):
 		"""
 		For each node other than the root, it adds the maximum-score
-		child-parent link. Expects a {(i, j): score} dict.
+		child-parent link. Errors from self.scores not containing an edge are
+		left propagate.
 		
 		This method mutates the instance. If the graph already has some edges,
 		these are discarded.
@@ -36,8 +43,8 @@ class Graph:
 			parent = None
 			
 			for i in filter(lambda x: x != j, self.nodes):
-				if scores[(i, j)] > max_score:
-					max_score = scores[(i, j)]
+				if self.scores[(i, j)] > max_score:
+					max_score = self.scores[(i, j)]
 					parent = i
 			
 			if parent is not None:
@@ -64,7 +71,7 @@ class Graph:
 		return set([edge[0] for edge in cycle] + [edge[1] for edge in cycle])
 	
 	
-	def contract(self, c_node, scores):
+	def contract(self, c_node):
 		"""
 		Returns a new Graph instance comprising a contracted minor of the this
 		instance. Contracting consists of finding a cycle and replacing the
@@ -78,7 +85,7 @@ class Graph:
 		new_nodes = (self.nodes - cycle) | set([c_node])
 		new_edges = set()
 		new_scores = {
-			edge: score for edge, score in scores.items()
+			edge: score for edge, score in self.scores.items()
 			if edge[0] not in cycle and edge[1] not in cycle}
 		
 		for edge in self.edges:
@@ -87,24 +94,37 @@ class Graph:
 			
 			elif edge[0] in cycle:
 				new_scores[(c_node, edge[1])] = max([
-					score for edge_, score in scores.items()
+					score for edge_, score in self.scores.items()
 					if edge_[0] in cycle and edge_[1] == edge[1]])
 				new_edges.add((c_node, edge[1]))
 			
 			elif edge[1] in cycle:
 				new_scores[(edge[0], c_node)] = max([
-					score for edge_, score in scores.items()
+					score for edge_, score in self.scores.items()
 					if edge_[0] == edge[0] and edge_[1] in cycle])
 				new_edges.add((edge[0], c_node))
 			
 			else:
 				new_edges.add(edge)
 		
-		return Graph(new_nodes, new_edges), new_scores
+		return cycle, Graph(new_nodes, new_edges, new_scores)
+	
+	
+	def expand(self, original_graph, cycle, c_node):
+		"""
+		Returns a new Graph instance with the specified node expanded back into
+		the nodes that had been contracted in order to create it.
+		
+		This method does not mutate the instance.
+		"""
+		parent = filter(lambda edge: edge[1] == c_node, self.edges)[0]
+		
+		new_nodes = (self.nodes - set([c_node])) | cycle
+		new_edges = set(self.edges)
 
 
 
-def find(graph, scores):
+def find(graph):
 	"""
 	The main function of Chu-Liu/Edmond's algorithm. Expects a Graph instance
 	and a dictionary with the scores. The latter should have an entry for each
@@ -113,10 +133,10 @@ def find(graph, scores):
 	Recursively returns a Graph instance that comprises the maximum spanning
 	arborescence.
 	"""
-	graph.create_greedy_edges(scores)
+	graph.create_greedy_edges()
 	
 	try:
-		new_graph, new_scores = graph.contract(scores)
+		new_graph, new_scores = graph.contract()
 	except ValueError:
 		return graph
 	
