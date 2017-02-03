@@ -4,7 +4,7 @@ from hypothesis.strategies import integers, lists, sets
 from hypothesis.strategies import composite
 from hypothesis import given
 
-from code.chu_liu import Graph, find_max_tree, generate_node_name
+from code.chlied import Graph, find_max_tree, generate_node_name
 
 
 
