@@ -1,4 +1,6 @@
 /meta/*
 
+/.hypothesis/*
+
 *.pyc
 *.swp
