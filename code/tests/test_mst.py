@@ -16,7 +16,7 @@ def square_matrices(draw, size):
 
 
 
-class ChuLiuTestCase(TestCase):
+class MstTestCase(TestCase):
 	
 	@given(integers(min_value=1, max_value=10).flatmap(
 			lambda x: square_matrices(x)))
@@ -116,3 +116,20 @@ class ChuLiuTestCase(TestCase):
 		# ensure each node apart from the root has a parent
 		for node in range(1, size):
 			self.assertTrue(any([edge[1] == node for edge in res.edges]))
+	
+	
+	def test_find_mst_john_saw_mary(self):
+		scores = {
+			(0, 1): 9, (0, 2): 10, (0, 3): 9,  # root
+			(1, 2): 20, (1, 3): 3,  # john
+			(2, 1): 30, (2, 3): 30,  # saw
+			(3, 1): 11, (3, 2): 0}  # mary
+		
+		graph = Graph(range(4), scores=scores)
+		
+		res = find_mst(graph)
+		self.assertTrue(isinstance(res, Graph))
+		self.assertEqual(res.nodes, set(range(4)))
+		self.assertEqual(res.scores, scores)
+		
+		self.assertEqual(res.edges, set([(0, 2), (2, 1), (2, 3)]))
