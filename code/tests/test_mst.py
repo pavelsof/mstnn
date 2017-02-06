@@ -4,7 +4,7 @@ from hypothesis.strategies import integers, lists, sets
 from hypothesis.strategies import composite
 from hypothesis import given
 
-from code.chlied import Graph, find_max_tree, generate_node_name
+from code.mst import Graph, find_mst, generate_node_name
 
 
 
@@ -99,7 +99,7 @@ class ChuLiuTestCase(TestCase):
 	
 	@given(integers(min_value=1, max_value=10).flatmap(
 			lambda x: square_matrices(x)))
-	def test_find_max_tree_does_not_break(self, matrix):
+	def test_find_mst_does_not_break(self, matrix):
 		size = len(matrix)
 		scores = {
 			(i, j): matrix[i][j]
@@ -107,7 +107,7 @@ class ChuLiuTestCase(TestCase):
 		
 		graph = Graph(range(size), scores=scores)
 		
-		res = find_max_tree(graph)
+		res = find_mst(graph)
 		
 		self.assertTrue(isinstance(res, Graph))
 		self.assertEqual(res.nodes, set(range(size)))

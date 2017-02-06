@@ -169,7 +169,7 @@ class Graph:
 
 
 
-def find_max_tree(graph):
+def find_mst(graph):
 	"""
 	The main function of Chu-Liu/Edmond's algorithm. Expects a Graph instance
 	and a dictionary with the scores. The latter should have an entry for each
@@ -187,7 +187,7 @@ def find_max_tree(graph):
 	except ValueError:
 		return graph
 	
-	new_graph = find_max_tree(new_graph)
+	new_graph = find_mst(new_graph)
 	
 	return new_graph.expand(graph, cycle, c_node)
 
