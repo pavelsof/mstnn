@@ -1,5 +1,7 @@
 import argparse
 
+from code.main import train, test
+
 
 
 class Cli:
@@ -33,8 +35,8 @@ class Cli:
 		a conllu data file to train on and a model file to save the output of
 		the training into.
 		"""
-		def train(args):
-			pass
+		def _train(args):
+			train(args.models_file, args.conllu_file)
 		
 		usage = 'manage.py train model_file conllu_file'
 		description = 'train an mstnn instance from conllu data'
@@ -49,7 +51,7 @@ class Cli:
 			'path to the data to train on; '
 			'assumed to be a unicode conllu file'))
 		
-		subp.set_defaults(func=train)
+		subp.set_defaults(func=_train)
 	
 	
 	def _init_test(self):
@@ -58,8 +60,8 @@ class Cli:
 		previously trained model and a conllu data file against which to use
 		the model. Writes the performance stats to stdout.
 		"""
-		def test(args):
-			pass
+		def _test(args):
+			test(args.model_file, args.conllu_file)
 		
 		usage = 'manage.py test model_file conllu_file'
 		description = 'test an mstnn model against conllu data'
@@ -73,7 +75,7 @@ class Cli:
 			'path to the test data; '
 			'assumed to be a unicode conllu file'))
 		
-		subp.set_defaults(func=test)
+		subp.set_defaults(func=_test)
 	
 	
 	def _init_unittest(self):
