@@ -1,5 +1,7 @@
 from collections import namedtuple
 
+import networkx as nx
+
 
 
 class ConlluError(ValueError):
@@ -11,8 +13,9 @@ class ConlluError(ValueError):
 
 
 """
-Represents a word, i.e. a row with an integer ID. Apart from the latter, the
-fields are non-empty strings.
+Represents a word, i.e. a row with an integer ID (excluding multiword tokens
+and empty nodes). With the exception of ID and HEAD which are integers, the
+other fields are non-empty strings.
 """
 Word = namedtuple('Word', [
 	'ID', 'FORM', 'LEMMA',
@@ -34,8 +37,9 @@ class Dataset:
 	def gen_sentences(self):
 		"""
 		Generator that yields a tuple of Word named tuples for each sentence in
-		the dataset. Raises ConlluError if the file does not conform to the
-		CoNLL-U format.
+		the dataset.
+		
+		Raises ConlluError if the file does not conform to the CoNLL-U format.
 		"""
 		sent = []
 		
@@ -51,6 +55,7 @@ class Dataset:
 						
 						try:
 							line[0] = int(line[0])
+							line[6] = int(line[6])
 						except ValueError:
 							assert all([c.isdigit() or c in ('-', '.') for c in line[0]])
 							continue
@@ -70,7 +75,24 @@ class Dataset:
 	
 	def gen_graphs(self):
 		"""
-		Generator that yields a Graph instance for each sentence in the
+		Generator that yields a nx.DiGraph instance for each sentence in the
 		dataset.
+		
+		The graph nodes are the indices (0 being the root) of the respective
+		words; FORM, LEMMA, UPOSTAG, and FEATS are stored as node attributes.
+		The graph edges are directed from parent to child; DEPREL is stored as
+		an edge attribute.
+		
+		Raises ConlluError if the file does not conform to the ConLL-U format.
 		"""
-		pass
+		for sent in self.gen_sentences():
+			graph = nx.DiGraph()
+			graph.add_node(0)
+			
+			for word in sent:
+				graph.add_node(word.ID,
+					FORM=word.FORM, LEMMA=word.LEMMA,
+					UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
+				graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
+			
+			yield graph
