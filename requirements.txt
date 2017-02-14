@@ -1,2 +1,7 @@
 hypothesis==3.6.1
 networkx==1.11
+numpy==1.12.0
+scipy==0.18.1
+PyYAML==3.12
+tensorflow==0.12.1
+Keras==1.2.2
