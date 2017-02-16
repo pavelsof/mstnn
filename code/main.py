@@ -1,4 +1,5 @@
 from code.conllu import Dataset
+from code.features import featurise_graph
 
 
 
@@ -8,6 +9,13 @@ def train(model_fp, data_fp):
 	written to, and a path to a .conllu dataset that will be used for training.
 	"""
 	dataset = Dataset(data_fp)
+	
+	samples = []
+	targets = []
+	
+	for graph in dataset.gen_graphs():
+		samples.append(featurise_graph(graph))
+		targets.append(graph)
 
 
 

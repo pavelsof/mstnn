@@ -1,5 +1,8 @@
 from collections import OrderedDict
 
+import networkx as nx
+import numpy as np
+
 
 
 """
@@ -7,10 +10,13 @@ Constants
 """
 
 """
-Tuple listing all possible universal POS tags
+Tuple listing all possible universal POS tags with the addition of a
+non-standard POS tag marking a sentence's root.
+
 http://universaldependencies.org/u/pos/index.html
 """
 POS_TAGS = (
+	'ROOT',  # non-standard! the root of a sentence
 	'ADJ',  # adjective
 	'ADP',  # adposition
 	'ADV',  # adverb
@@ -32,6 +38,7 @@ POS_TAGS = (
 
 """
 Tuple listing all possible universal dependency relations
+
 http://universaldependencies.org/u/dep/index.html
 """
 DEP_RELS = (
@@ -76,7 +83,7 @@ DEP_RELS = (
 
 
 """
-Dictionary where the keys are the possible universal features and the values
+Ordered dict where the keys are the possible universal features and the values
 are the respective features' possible values.
 
 http://universaldependencies.org/u/feat/index.html
@@ -122,8 +129,11 @@ Functions
 
 def featurise_pos_tag(pos_tag):
 	"""
-	Returns a one-hot vector for the given POS tag. Raises a ValueError if the
-	given string is not a universal POS tag.
+	Returns the feature vector for the given POS tag. Raises a ValueError if
+	the given string is not a universal POS tag.
+	
+	The vector is a [] of zeroes and a single 1, the latter being at the index
+	in POS_TAGS that corresponds to the given tag.
 	"""
 	vector = [0] * len(POS_TAGS)
 	vector[POS_TAGS.index(pos_tag)] = 1
@@ -131,10 +141,14 @@ def featurise_pos_tag(pos_tag):
 	return vector
 
 
+
 def featurise_dep_rel(dep_rel):
 	"""
-	Returns a one-hot vector for the given dependency relation. Raises a
+	Returns the feature vector for the given dependency relation. Raises a
 	ValueError if the given string is not a universal dependency relation.
+	
+	The vector is a [] of zeroes and a single 1, the latter being at the index
+	in DEP_RELS that corresponds to the given dependency relation.
 	"""
 	vector = [0] * len(DEP_RELS)
 	vector[DEP_RELS.index(dep_rel)] = 1
@@ -142,20 +156,23 @@ def featurise_dep_rel(dep_rel):
 	return vector
 
 
+
 def featurise_morph(morph):
 	"""
 	Returns the feature vector corresponding to the given FEATS string. Raises
 	an Exception if the string does not conform to the rules.
+	
+	The vector is a [] of zeroes and ones with each element representing a
+	possible value of the MORPH_FEATURES ordered dict. E.g. the output for
+	"Animacy=Anim" should be a vector with its second element 1 and all the
+	other elements zeroes.
 	"""
-	try:
+	if morph in ['_', '']:
+		morph = {}
+	else:
 		morph = {
 			key: value.split(',')
 			for key, value in map(lambda x: x.split('='), morph.split('|'))}
-	except:
-		if not morph:
-			morph = {}
-		else:
-			raise
 	
 	vector = []
 	
@@ -170,3 +187,34 @@ def featurise_morph(morph):
 		vector += small_vec
 	
 	return vector
+
+
+
+def featurise_graph(graph):
+	"""
+	Returns the 3D feature matrix extracted from the given nx.DiGraph instance.
+	The latter is expected to be of the type that conllu.Dataset.gen_graphs()
+	produces.
+	
+	The matrix has the width and height equal to the number of words in the
+	sentence (including the imaginary root word). The depth consists of (1) the
+	adjacency 2D matrix, (2) the POS tag feature vectors, and (3) the
+	morphology feature vectors, stacked in this order.
+	
+	The return value itself is a numpy array of shape (depth, height, width).
+	"""
+	num_nodes = graph.number_of_nodes()
+	
+	adj_mat = np.expand_dims(nx.adjacency_matrix(graph).todense(), axis=0)
+	
+	pos_mat = np.array([featurise_pos_tag(graph.node[node]['UPOSTAG'])
+		for node in range(num_nodes)])
+	pos_mat = np.tile(pos_mat, (num_nodes, 1, 1))
+	pos_mat = np.swapaxes(np.swapaxes(pos_mat, 0, 2), 1, 2)
+	
+	morph_mat = np.array([featurise_morph(graph.node[node]['FEATS'])
+		for node in range(num_nodes)])
+	morph_mat = np.tile(morph_mat, (num_nodes, 1, 1))
+	morph_mat = np.swapaxes(np.swapaxes(morph_mat, 0, 2), 1, 2)
+	
+	return np.concatenate((adj_mat, pos_mat, morph_mat), axis=0)

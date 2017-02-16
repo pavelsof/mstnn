@@ -87,7 +87,7 @@ class Dataset:
 		"""
 		for sent in self.gen_sentences():
 			graph = nx.DiGraph()
-			graph.add_node(0)
+			graph.add_node(0, UPOSTAG='ROOT', FEATS='_')
 			
 			for word in sent:
 				graph.add_node(word.ID,
