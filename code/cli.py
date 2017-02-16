@@ -36,7 +36,7 @@ class Cli:
 		the training into.
 		"""
 		def _train(args):
-			train(args.models_file, args.conllu_file)
+			train(args.model_file, args.conllu_file)
 		
 		usage = 'manage.py train model_file conllu_file'
 		description = 'train an mstnn instance from conllu data'

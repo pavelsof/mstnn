@@ -124,55 +124,77 @@ MORPH_FEATURES = OrderedDict(sorted(MORPH_FEATURES.items(), key=lambda x: x[0]))
 
 
 """
+Errors
+"""
+
+class FeatureError(ValueError):
+	"""
+	Raised when an unrecognised input (i.e. non-existant POS tag) is given to
+	any of the featurise_* functions. Inited with a user-friendly message.
+	"""
+	pass
+
+
+
+"""
 Functions
 """
 
 def featurise_pos_tag(pos_tag):
 	"""
-	Returns the feature vector for the given POS tag. Raises a ValueError if
-	the given string is not a universal POS tag.
+	Returns the feature vector for the given POS tag. Raises a FeatureError if
+	the given string is not a universal POS tag or 'ROOT'.
 	
-	The vector is a [] of zeroes and a single 1, the latter being at the index
-	in POS_TAGS that corresponds to the given tag.
+	The vector is a numpy array of zeroes and a single 1, the latter being at
+	the index in POS_TAGS that corresponds to the given tag.
 	"""
-	vector = [0] * len(POS_TAGS)
-	vector[POS_TAGS.index(pos_tag)] = 1
+	try:
+		vector = [0] * len(POS_TAGS)
+		vector[POS_TAGS.index(pos_tag)] = 1
+	except ValueError:
+		raise FeatureError('Unknown POS tag: {}'.format(pos_tag))
 	
-	return vector
+	return np.array(vector)
 
 
 
 def featurise_dep_rel(dep_rel):
 	"""
 	Returns the feature vector for the given dependency relation. Raises a
-	ValueError if the given string is not a universal dependency relation.
+	FeatureError if the given string is not a universal dependency relation.
 	
-	The vector is a [] of zeroes and a single 1, the latter being at the index
-	in DEP_RELS that corresponds to the given dependency relation.
+	The vector is a numpy array of zeroes and a single 1, the latter being at
+	the index in DEP_RELS that corresponds to the given dependency relation.
 	"""
-	vector = [0] * len(DEP_RELS)
-	vector[DEP_RELS.index(dep_rel)] = 1
+	try:
+		vector = [0] * len(DEP_RELS)
+		vector[DEP_RELS.index(dep_rel)] = 1
+	except ValueError:
+		raise FeatureError('Unknown dependency relation: {}'.format(dep_rel))
 	
-	return vector
+	return np.array(vector)
 
 
 
 def featurise_morph(morph):
 	"""
 	Returns the feature vector corresponding to the given FEATS string. Raises
-	an Exception if the string does not conform to the rules.
+	a FeatureError if the string does not conform to the rules.
 	
-	The vector is a [] of zeroes and ones with each element representing a
-	possible value of the MORPH_FEATURES ordered dict. E.g. the output for
-	"Animacy=Anim" should be a vector with its second element 1 and all the
-	other elements zeroes.
+	The vector is a numpy array of zeroes and ones with each element
+	representing a possible value of the MORPH_FEATURES ordered dict. E.g. the
+	output for "Animacy=Anim" should be a vector with its second element 1 and
+	all the other elements zeroes.
 	"""
-	if morph in ['_', '']:
-		morph = {}
-	else:
+	try:
 		morph = {
 			key: value.split(',')
 			for key, value in map(lambda x: x.split('='), morph.split('|'))}
+	except ValueError:
+		if morph == '_':
+			morph = {}
+		else:
+			raise FeatureError('Bad FEATS format: {}'.format(morph))
 	
 	vector = []
 	
@@ -186,7 +208,7 @@ def featurise_morph(morph):
 		
 		vector += small_vec
 	
-	return vector
+	return np.array(vector)
 
 
 
