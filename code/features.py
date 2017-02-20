@@ -212,6 +212,25 @@ def featurise_morph(morph):
 
 
 
+def featurise_edge(graph, edge):
+	"""
+	Returns the feature vector for the edge in the given graph that is defined
+	by the given nodes tuple. Non-edges can also be featurised.
+	
+	The return value is a numpy array that is the result of concatenating the
+	parent and child's POS tag and morphology feature vectors.
+	"""
+	parent = graph.node[edge[0]]
+	child = graph.node[edge[1]]
+	
+	return np.concatenate([
+		featurise_pos_tag(parent['UPOSTAG']),
+		featurise_morph(parent['FEATS']),
+		featurise_pos_tag(child['UPOSTAG']),
+		featurise_morph(child['FEATS'])])
+
+
+
 def featurise_graph(graph):
 	"""
 	Returns the 3D feature matrix extracted from the given nx.DiGraph instance.

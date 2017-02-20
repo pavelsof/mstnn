@@ -1,5 +1,5 @@
 from code.conllu import Dataset
-from code.features import featurise_graph
+from code.nn import NeuralNetwork
 
 
 
@@ -10,12 +10,8 @@ def train(model_fp, data_fp):
 	"""
 	dataset = Dataset(data_fp)
 	
-	samples = []
-	targets = []
-	
-	for graph in dataset.gen_graphs():
-		samples.append(featurise_graph(graph))
-		targets.append(graph)
+	nn = NeuralNetwork()
+	nn.train(dataset)
 
 
 
