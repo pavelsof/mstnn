@@ -1,17 +1,21 @@
 from code.conllu import Dataset
+from code.features import Extractor
 from code.nn import NeuralNetwork
 
 
 
-def train(model_fp, data_fp):
+def train(model_fp, data_fp, ud_version=2):
 	"""
 	Trains an mstnn instance. Expects a path where the trained model will be
 	written to, and a path to a .conllu dataset that will be used for training.
 	"""
 	dataset = Dataset(data_fp)
 	
+	extractor = Extractor(ud_version)
+	extractor.read(dataset)
+	
 	nn = NeuralNetwork()
-	nn.train(dataset)
+	nn.train(dataset, extractor)
 
 
 

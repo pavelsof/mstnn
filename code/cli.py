@@ -36,12 +36,11 @@ class Cli:
 		the training into.
 		"""
 		def _train(args):
-			train(args.model_file, args.conllu_file)
+			train(args.model_file, args.conllu_file, ud_version=args.ud_version)
 		
-		usage = 'manage.py train model_file conllu_file'
 		description = 'train an mstnn instance from conllu data'
 		
-		subp = self.subparsers.add_parser('train', usage=usage,
+		subp = self.subparsers.add_parser('train',
 			description=description, help=description)
 		
 		subp.add_argument('model_file', help=(
@@ -50,6 +49,9 @@ class Cli:
 		subp.add_argument('conllu_file', help=(
 			'path to the data to train on; '
 			'assumed to be a unicode conllu file'))
+		
+		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
+			'the UD version to use; either 1 or 2 (the default)'))
 		
 		subp.set_defaults(func=_train)
 	

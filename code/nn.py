@@ -4,8 +4,6 @@ from keras.models import Sequential
 import networkx as nx
 import numpy as np
 
-from code.features import featurise_edge
-
 
 
 class NeuralNetwork:
@@ -33,9 +31,10 @@ class NeuralNetwork:
 		pass
 	
 	
-	def train(self, dataset, epochs=10):
+	def train(self, dataset, extractor, epochs=10):
 		"""
-		Expects a conllu.Dataset instance to train on.
+		Expects a conllu.Dataset instance to train on and a features.Extractor
+		instance to extract the feature vectors with.
 		
 		Currently each sample consists of concatenating the POS tag and
 		morphology feature vectors of the parent and the child of each edge.
@@ -45,11 +44,11 @@ class NeuralNetwork:
 		
 		for graph in dataset.gen_graphs():
 			for edge in graph.edges():
-				samples.append(featurise_edge(graph, edge))
+				samples.append(extractor.featurise_edge(graph, edge))
 				targets.append(1)
 			
 			for edge in nx.non_edges(graph):
-				samples.append(featurise_edge(graph, edge))
+				samples.append(extractor.featurise_edge(graph, edge))
 				targets.append(0)
 		
 		samples = np.array(samples)
