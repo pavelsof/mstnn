@@ -1,4 +1,5 @@
-from keras.layers.core import Dense
+from keras.layers.core import Dense, Flatten, Merge
+from keras.layers.embeddings import Embedding
 from keras.models import Sequential
 
 import networkx as nx
@@ -12,11 +13,22 @@ class NeuralNetwork:
 		"""
 		Constructor. Inits and compiles the Keras model.
 		"""
+		grammar_branch = Sequential([
+			Dense(64, input_dim=244, init='uniform', activation='tanh')
+		])
+		
+		lexicon_branch = Sequential([
+			Embedding(4222, 64, input_length=2),
+			Flatten()
+		])
+		
 		self.model = Sequential([
-			Dense(64, input_dim=306, init='uniform', activation='tanh'),
-			Dense(64, init='uniform', activation='tanh'),
+			Merge([grammar_branch, lexicon_branch], mode='concat'),
+			Dense(128, init='uniform', activation='tanh'),
 			Dense(1, init='uniform', activation='softmax')
 		])
+		
+		self.model.compile(optimizer='sgd', loss='mse', metrics=['accuracy'])
 	
 	
 	def load(self, path):
@@ -31,7 +43,7 @@ class NeuralNetwork:
 		pass
 	
 	
-	def train(self, dataset, extractor, epochs=10):
+	def train(self, dataset, extractor, epochs=2):
 		"""
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
@@ -39,25 +51,35 @@ class NeuralNetwork:
 		Currently each sample consists of concatenating the POS tag and
 		morphology feature vectors of the parent and the child of each edge.
 		"""
-		samples = []
+		samples_grammar = []
+		samples_lexicon = []
 		targets = []
 		
 		for graph in dataset.gen_graphs():
 			for edge in graph.edges():
-				samples.append(extractor.featurise_edge(graph, edge))
+				samples_grammar.append(extractor.featurise_edge(graph, edge))
+				samples_lexicon.append([
+					extractor.featurise_lemma(graph.node[edge[0]]['LEMMA']),
+					extractor.featurise_lemma(graph.node[edge[1]]['LEMMA'])
+				])
 				targets.append(1)
 			
 			for edge in nx.non_edges(graph):
-				samples.append(extractor.featurise_edge(graph, edge))
+				samples_grammar.append(extractor.featurise_edge(graph, edge))
+				samples_lexicon.append([
+					extractor.featurise_lemma(graph.node[edge[0]]['LEMMA']),
+					extractor.featurise_lemma(graph.node[edge[1]]['LEMMA'])
+				])
 				targets.append(0)
 		
-		samples = np.array(samples)
+		samples_grammar = np.array(samples_grammar)
+		samples_lexicon = np.array(samples_lexicon)
 		targets = np.array(targets)
 		
-		self.model.fit(samples, targets, nb_epoch=epochs)
+		self.model.fit([samples_grammar, samples_lexicon], targets, nb_epoch=epochs)
 	
 	
-	def test(self, samples, targets):
+	def test(self, dataset, extractor):
 		"""
 		"""
 		pass

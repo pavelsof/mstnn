@@ -1,7 +1,5 @@
 import argparse
 
-from code.main import train, test
-
 
 
 class Cli:
@@ -36,6 +34,7 @@ class Cli:
 		the training into.
 		"""
 		def _train(args):
+			from code.main import train
 			train(args.model_file, args.conllu_file, ud_version=args.ud_version)
 		
 		description = 'train an mstnn instance from conllu data'
@@ -63,6 +62,7 @@ class Cli:
 		the model. Writes the performance stats to stdout.
 		"""
 		def _test(args):
+			from code.main import test
 			test(args.model_file, args.conllu_file)
 		
 		usage = 'manage.py test model_file conllu_file'
@@ -121,9 +121,6 @@ class Cli:
 		if args.command is None:
 			return self.parser.format_help()
 		
-		try:
-			args.func(args)
-		except Exception as err:
-			self.parser.error(str(err))
+		args.func(args)
 		
 		self.parser.exit()

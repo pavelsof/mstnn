@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import networkx as nx
 import numpy as np
 
@@ -39,20 +41,35 @@ class Extractor:
 			raise ValueError('Unknown UD version: {}'.format(ud_version))
 		
 		self.ud_version = ud_version
+		self.lemmas = defaultdict(lambda: len(self.lemmas))
 	
 	
 	def read(self, dataset):
 		"""
-		Reads the data provided by the given conllu.Dataset instance.
+		Reads the data provided by the given conllu.Dataset instance and
+		compiles the self.lemmas dict.
 		"""
-		pass
+		self.lemmas['_']
+		
+		for sent in dataset.gen_sentences():
+			[self.lemmas[word.LEMMA] for word in sent]
 	
 	
-	def get_feature_vec_dims(self):
+	def get_lemma_vocab_size(self):
 		"""
-		Returns the size of the feature vectors that will be produced.
 		"""
-		pass
+		return len(self.lemmas)
+	
+	
+	def featurise_lemma(self, lemma):
+		"""
+		Returns an integer uniquely identifying the given lemma. Raises a
+		FeatureError if the lemma has not been found during reading.
+		"""
+		if lemma not in self.lemmas:
+			raise FeatureError('Unknown lemma: {}'.format(lemma))
+		
+		return self.lemmas[lemma]
 	
 	
 	def featurise_pos_tag(self, pos_tag):
