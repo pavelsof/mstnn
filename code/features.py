@@ -1,5 +1,9 @@
 from collections import defaultdict
 
+import json
+
+import h5py
+
 import networkx as nx
 import numpy as np
 
@@ -42,6 +46,44 @@ class Extractor:
 		
 		self.ud_version = ud_version
 		self.lemmas = defaultdict(lambda: len(self.lemmas))
+	
+	
+	@classmethod
+	def create_from_model_file(cls, model_fp):
+		"""
+		Returns a new Extractor instance with self.ud_version and self.lemmas
+		loaded from the specified model file. The latter is expected to be a
+		hdf5 file written or appended to by the method below.
+		"""
+		f = h5py.File(model_fp, 'r')
+		
+		ud_version = f['extractor'].attrs['ud_version']
+		lemmas = json.loads(f['extractor'].attrs['lemmas'])
+		
+		f.close()
+		
+		extractor = Extractor(ud_version)
+		
+		for key, value in lemmas.items():
+			extractor.lemmas[key] = value
+		
+		return extractor
+	
+	
+	def write_to_model_file(self, model_fp):
+		"""
+		Appends to the specified hdf5 file, storing the UD version and the
+		extracted lemmas. Thus, an identical Extractor can be later restored
+		using the above class method.
+		"""
+		f = h5py.File(model_fp, 'a')
+		
+		group = f.create_group('extractor')
+		group.attrs['ud_version'] = self.ud_version
+		group.attrs['lemmas'] = json.dumps(dict(self.lemmas), ensure_ascii=False)
+		
+		f.flush()
+		f.close()
 	
 	
 	def read(self, dataset):

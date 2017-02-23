@@ -1,6 +1,6 @@
 from keras.layers.core import Dense, Flatten, Merge
 from keras.layers.embeddings import Embedding
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 
 import networkx as nx
 import numpy as np
@@ -9,9 +9,46 @@ import numpy as np
 
 class NeuralNetwork:
 	
-	def __init__(self):
+	def __init__(self, model=None):
 		"""
-		Constructor. Inits and compiles the Keras model.
+		Constructor. The keyword argument is expected to be a Keras model. If
+		not specified, a new model is created and compiled. In any case, the
+		Keras model should be compiled and ready to use right after the init.
+		"""
+		if model is None:
+			self._init_model()
+		else:
+			self.model = model
+	
+	
+	@classmethod
+	def create_from_model_file(cls, model_fp):
+		"""
+		Returns a new NeuralNetwork instance with its Keras model loaded from
+		the specified Keras model file.
+		
+		Raises ?
+		"""
+		keras_model = load_model(model_fp)
+		return cls(keras_model)
+	
+	
+	def write_to_model_file(self, model_fp):
+		"""
+		Writes a hdf5 file containing the Keras model's architecture, weights,
+		training configuration, and state of the optimiser. Thus, an identical
+		NeuralNetwork can be later restored using the above class method.
+		
+		If there already is a file at the specified path, it gets overwritten.
+		
+		Raises ?
+		"""
+		self.model.save(model_fp, overwrite=True)
+	
+	
+	def _init_model(self):
+		"""
+		Inits and compiles the Keras model.
 		"""
 		grammar_branch = Sequential([
 			Dense(64, input_dim=244, init='uniform', activation='tanh')
@@ -29,18 +66,6 @@ class NeuralNetwork:
 		])
 		
 		self.model.compile(optimizer='sgd', loss='mse', metrics=['accuracy'])
-	
-	
-	def load(self, path):
-		"""
-		"""
-		pass
-	
-	
-	def save(self, path):
-		"""
-		"""
-		pass
 	
 	
 	def train(self, dataset, extractor, epochs=2):

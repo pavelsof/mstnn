@@ -1,6 +1,10 @@
+import os.path
+import tempfile
+
 from unittest import TestCase
 
-from hypothesis.strategies import composite, sampled_from, sets
+from hypothesis.strategies import composite, dictionaries, integers
+from hypothesis.strategies import sampled_from, sets, text
 from hypothesis import given
 
 import numpy as np
@@ -77,3 +81,18 @@ class FeaturesTestCase(TestCase):
 		
 		with self.assertRaises(FeatureError):
 			self.ext.featurise_morph('')
+	
+	
+	@given(dictionaries(text(), integers()))
+	def test_model_files(self, lemmas):
+		for key, value in lemmas.items():
+			self.ext.lemmas[key] = value
+		
+		with tempfile.TemporaryDirectory() as temp_dir:
+			path = os.path.join(temp_dir, 'model')
+			self.ext.write_to_model_file(path)
+			new_ext = Extractor.create_from_model_file(path)
+		
+		self.assertTrue(isinstance(new_ext, Extractor))
+		self.assertEqual(new_ext.ud_version, self.ext.ud_version)
+		self.assertEqual(new_ext.lemmas, self.ext.lemmas)

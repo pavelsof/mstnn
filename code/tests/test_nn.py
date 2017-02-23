@@ -1,7 +1,5 @@
 from unittest import TestCase
 
-import numpy as np
-
 from code.nn import NeuralNetwork
 
 
