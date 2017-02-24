@@ -96,3 +96,21 @@ class FeaturesTestCase(TestCase):
 		self.assertTrue(isinstance(new_ext, Extractor))
 		self.assertEqual(new_ext.ud_version, self.ext.ud_version)
 		self.assertEqual(new_ext.lemmas, self.ext.lemmas)
+	
+	
+	def test_model_files_error(self):
+		with tempfile.TemporaryDirectory() as temp_dir:
+			path = os.path.join(temp_dir, 'model')
+			with self.assertRaises(OSError):
+				Extractor.create_from_model_file(path)
+			
+			with open(path, 'w') as f:
+				f.write('hi')
+			
+			with self.assertRaises(OSError):
+				Extractor.create_from_model_file(path)
+		
+		assert not os.path.exists(temp_dir)
+		
+		with self.assertRaises(OSError):
+			self.ext.write_to_model_file(path)

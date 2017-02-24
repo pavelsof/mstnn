@@ -41,7 +41,7 @@ def save_model(model_fp, extractor, neural_net):
 	Writes a h5py file to the specified path. The file contains the keras model
 	of the given NeuralNetwork and the parameters of the given Extractor.
 	
-	Raises a ValueError (?) if the path cannot be written.
+	Raises an OSError if the path cannot be written.
 	
 	The file is in fact the keras model file with an added h5py group at the
 	root level to hold the extractor data.
@@ -56,8 +56,8 @@ def load_model(model_fp):
 	Expects a file previously written using save_model and returns an Extractor
 	and a NeuralNetwork instances.
 	
-	Raises a ValueError if there is a problem with reading the file or if this
-	is not in the expected format.
+	Raises an OSError if there is a problem with reading the file or if this is
+	not in the expected format.
 	"""
 	extractor = Extractor.create_from_model_file(model_fp)
 	neural_net = NeuralNetwork.create_from_model_file(model_fp)

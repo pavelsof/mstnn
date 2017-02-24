@@ -54,6 +54,8 @@ class Extractor:
 		Returns a new Extractor instance with self.ud_version and self.lemmas
 		loaded from the specified model file. The latter is expected to be a
 		hdf5 file written or appended to by the method below.
+		
+		Raises an OSError if the file does not exist or cannot be read.
 		"""
 		f = h5py.File(model_fp, 'r')
 		
@@ -75,6 +77,8 @@ class Extractor:
 		Appends to the specified hdf5 file, storing the UD version and the
 		extracted lemmas. Thus, an identical Extractor can be later restored
 		using the above class method.
+		
+		Raises an OSError if the file cannot be written.
 		"""
 		f = h5py.File(model_fp, 'a')
 		

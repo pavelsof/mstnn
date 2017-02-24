@@ -27,7 +27,7 @@ class NeuralNetwork:
 		Returns a new NeuralNetwork instance with its Keras model loaded from
 		the specified Keras model file.
 		
-		Raises ?
+		Raises an OSError if the file does not exist or cannot be read.
 		"""
 		keras_model = load_model(model_fp)
 		return cls(keras_model)
@@ -41,7 +41,7 @@ class NeuralNetwork:
 		
 		If there already is a file at the specified path, it gets overwritten.
 		
-		Raises ?
+		Raises an OSError if the file cannot be written.
 		"""
 		self.model.save(model_fp, overwrite=True)
 	
