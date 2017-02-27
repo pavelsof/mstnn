@@ -48,7 +48,13 @@ class NeuralNetwork:
 	
 	def _init_model(self):
 		"""
-		Inits and compiles the Keras model.
+		Inits and compiles the Keras model. This method is only called when
+		training; for testing, the Keras model is loaded.
+		
+		The network consists of two input branches, one handling the edges' POS
+		tags and morphological features, and the other handling the lemma
+		embeddings. These two inputs are concatenated and then go through a
+		standard single-layer perceptron.
 		"""
 		grammar_branch = Sequential([
 			Dense(64, input_dim=244, init='uniform', activation='tanh')
@@ -62,10 +68,12 @@ class NeuralNetwork:
 		self.model = Sequential([
 			Merge([grammar_branch, lexicon_branch], mode='concat'),
 			Dense(128, init='uniform', activation='tanh'),
-			Dense(1, init='uniform', activation='softmax')
+			Dense(1, init='uniform', activation='sigmoid')
 		])
 		
-		self.model.compile(optimizer='sgd', loss='mse', metrics=['accuracy'])
+		self.model.compile(optimizer='sgd',
+				loss='binary_crossentropy',
+				metrics=['accuracy'])
 	
 	
 	def train(self, dataset, extractor, epochs=2):
@@ -101,10 +109,14 @@ class NeuralNetwork:
 		samples_lexicon = np.array(samples_lexicon)
 		targets = np.array(targets)
 		
-		self.model.fit([samples_grammar, samples_lexicon], targets, nb_epoch=epochs)
+		self.model.fit([samples_grammar, samples_lexicon], targets,
+				batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
-	def test(self, dataset, extractor):
+	def calc_probs(self, dataset, extractor):
 		"""
+		Calculates the probabilities of each edge of each graph from the given
+		conllu.Dataset instance using the given features.Extractor instance to
+		extract the graphs' features.
 		"""
 		pass

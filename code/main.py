@@ -29,6 +29,8 @@ def test(model_fp, data_fp):
 	extractor, neural_net = load_model(model_fp)
 	
 	dataset = Dataset(data_fp)
+	
+	probs = neural_net.calc_probs(dataset, extractor)
 
 
 
