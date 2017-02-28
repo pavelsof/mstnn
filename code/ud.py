@@ -1,3 +1,10 @@
+"""
+Contains the POS tags, dependency relations, and morphological features defined
+by the Universal Dependencies project [0], for both of its major versions.
+
+[0] http://universaldependencies.org/
+"""
+
 from collections import OrderedDict
 
 
@@ -6,8 +13,8 @@ from collections import OrderedDict
 Tuples (one for each UD version) listing all possible universal POS tags with
 the addition of a non-standard POS tag marking a sentence's root.
 
-http://universaldependencies.org/docsv1/u/pos/index.html
-http://universaldependencies.org/u/pos/index.html
+[1] http://universaldependencies.org/docsv1/u/pos/index.html
+[2] http://universaldependencies.org/u/pos/index.html
 """
 POS_TAGS_V1 = (
 	'ROOT',  # non-standard! the root of a sentence
@@ -56,8 +63,8 @@ POS_TAGS_V2 = (
 Tuples (one for each UD version) listing all possible universal dependency
 relations.
 
-http://universaldependencies.org/docsv1/u/dep/index.html
-http://universaldependencies.org/u/dep/index.html
+[3] http://universaldependencies.org/docsv1/u/dep/index.html
+[4] http://universaldependencies.org/u/dep/index.html
 """
 DEP_RELS_V1 = (
 	'acl',  # clausal modifier of noun (adjectival clause)
@@ -147,8 +154,8 @@ DEP_RELS_V2 = (
 Ordered dicts (one for each UD version) where the keys are the universal
 features and the values are the respective features' possible values.
 
-http://universaldependencies.org/docsv1/u/feat/index.html
-http://universaldependencies.org/u/feat/index.html
+[5] http://universaldependencies.org/docsv1/u/feat/index.html
+[6] http://universaldependencies.org/u/feat/index.html
 """
 MORPH_FEATURES_V1 = {
 	'Animacy': ('Anim', 'Inan ', 'Nhum'),

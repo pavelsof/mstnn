@@ -1,3 +1,9 @@
+"""
+Handles the command-line interface, including the help strings. Only the UI is
+done here: as soon as it is clear what the user wants, the respective function
+from code.main is invoked.
+"""
+
 import argparse
 
 

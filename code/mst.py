@@ -1,3 +1,18 @@
+"""
+Impements the Chu-Liu/Edmonds' algorithm [0] for finding a spanning tree of
+minimum weight. This module does not know anything about sentence graphs, UD
+grammars, etc; its usage involves providing a set of nodes and the scores for
+each pair of those nodes and getting back the minimum spanning tree:
+	
+	import mst
+	tree = mst.find(mst.Graph(nodes, scores=scores))
+
+The result is also an mst.Graph instance, but with its edges (tree.edges) being
+set by the algorithm.
+
+[0] https://en.wikipedia.org/wiki/Edmonds'_algorithm
+"""
+
 import networkx as nx
 
 

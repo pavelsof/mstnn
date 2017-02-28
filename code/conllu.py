@@ -1,3 +1,15 @@
+"""
+Handles reading datasets in the CoNLL-U format [0]:
+	
+	dataset = Dataset(path)
+	for graph in dataset.gen_graphs():
+		...
+
+The resulting graphs are nx.DiGraph instances, one for each sentence.
+
+[0] http://universaldependencies.org/format.html
+"""
+
 from collections import namedtuple
 
 import networkx as nx

@@ -1,3 +1,8 @@
+"""
+This module knows how to convert the output of the conllu module into feature
+vectors understood by the nn module.
+"""
+
 from collections import defaultdict
 
 import json
@@ -210,7 +215,7 @@ class Extractor:
 	def featurise_graph(self, graph):
 		"""
 		Returns the 3D feature matrix extracted from the given nx.DiGraph
-		instance.  The latter is expected to be of the type that
+		instance. The latter is expected to be of the type that
 		conllu.Dataset.gen_graphs() produces.
 		
 		The matrix has the width and height equal to the number of words in the
