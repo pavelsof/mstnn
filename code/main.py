@@ -1,6 +1,8 @@
 import itertools
 
-from code.conllu import Dataset
+import networkx as nx
+
+from code.conllu import Dataset, write_graphs
 from code.features import Extractor
 from code.mst import find_mst, Graph
 from code.nn import NeuralNetwork
@@ -29,6 +31,8 @@ def test(model_fp, data_fp):
 	Tests a trained mstnn model against a .conllu dataset. Expects the path to
 	a previously trained mstnn model file and the path to the dataset file.
 	"""
+	parsed = []
+	
 	extractor, neural_net = load_model(model_fp)
 	
 	dataset = Dataset(data_fp)
@@ -42,6 +46,14 @@ def test(model_fp, data_fp):
 			for index, edge in enumerate(itertools.permutations(nodes, 2))}
 		
 		tree = find_mst(Graph(nodes, scores=scores))
+		
+		new_graph = nx.DiGraph()
+		new_graph.add_nodes_from(graph.nodes(data=True))
+		new_graph.add_edges_from(tree.edges)
+		
+		parsed.append(new_graph)
+	
+	write_graphs('output/test', parsed)
 
 
 

@@ -1,3 +1,7 @@
+import filecmp
+import os.path
+import tempfile
+
 from unittest import TestCase
 
 import networkx as nx
@@ -47,3 +51,25 @@ class DatasetTestCase(TestCase):
 		
 		self.assertEqual(res[0].number_of_nodes(), 10+1)
 		self.assertEqual(res[-1].number_of_nodes(), 25+1)
+	
+	
+	def test_write_sentences(self):
+		sents = [sent for sent in self.dataset.gen_sentences()]
+		
+		with tempfile.TemporaryDirectory() as temp_dir:
+			dataset = Dataset(os.path.join(temp_dir, 'test'))
+			dataset.write_sentences(sents)
+			
+			self.assertTrue(filecmp.cmp(self.dataset.file_path,
+				dataset.file_path, shallow=False))
+	
+	
+	def test_write_graphs(self):
+		graphs = [graph for graph in self.dataset.gen_graphs()]
+		
+		with tempfile.TemporaryDirectory() as temp_dir:
+			dataset = Dataset(os.path.join(temp_dir, 'test'))
+			dataset.write_graphs(graphs)
+			
+			self.assertTrue(filecmp.cmp(self.dataset.file_path,
+				dataset.file_path, shallow=False))
