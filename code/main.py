@@ -1,5 +1,8 @@
+import itertools
+
 from code.conllu import Dataset
 from code.features import Extractor
+from code.mst import find_mst, Graph
 from code.nn import NeuralNetwork
 
 
@@ -30,7 +33,15 @@ def test(model_fp, data_fp):
 	
 	dataset = Dataset(data_fp)
 	
-	probs = neural_net.calc_probs(dataset, extractor)
+	for graph in dataset.gen_graphs():
+		probs = neural_net.calc_probs(graph, extractor)
+		
+		nodes = list(graph.nodes())
+		scores = {
+			edge: probs[index][0]
+			for index, edge in enumerate(itertools.permutations(nodes, 2))}
+		
+		tree = find_mst(Graph(nodes, scores=scores))
 
 
 

@@ -3,6 +3,9 @@
 
 /meta/*
 
+/models/*
+/output/*
+
 /.hypothesis/*
 
 *.pyc

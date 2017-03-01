@@ -1,3 +1,5 @@
+import itertools
+
 from keras.layers.core import Dense, Flatten, Merge
 from keras.layers.embeddings import Embedding
 from keras.models import Sequential, load_model
@@ -113,10 +115,23 @@ class NeuralNetwork:
 				batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
-	def calc_probs(self, dataset, extractor):
+	def calc_probs(self, graph, extractor):
 		"""
-		Calculates the probabilities of each edge of each graph from the given
-		conllu.Dataset instance using the given features.Extractor instance to
-		extract the graphs' features.
+		Calculates the probabilities of each edge.
 		"""
-		pass
+		samples_grammar = []
+		samples_lexicon = []
+		
+		for edge in itertools.permutations(graph.nodes(), 2):
+			samples_grammar.append(extractor.featurise_edge(graph, edge))
+			samples_lexicon.append([
+				extractor.featurise_lemma(graph.node[edge[0]]['LEMMA']),
+				extractor.featurise_lemma(graph.node[edge[1]]['LEMMA'])
+			])
+		
+		samples_grammar = np.array(samples_grammar)
+		samples_lexicon = np.array(samples_lexicon)
+		
+		probs = self.model.predict_proba([samples_grammar, samples_lexicon])
+		
+		return probs
