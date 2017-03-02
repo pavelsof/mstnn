@@ -26,7 +26,7 @@ def train(model_fp, data_fp, ud_version=2):
 
 
 
-def test(model_fp, data_fp):
+def test(model_fp, data_fp, output_fp):
 	"""
 	Tests a trained mstnn model against a .conllu dataset. Expects the path to
 	a previously trained mstnn model file and the path to the dataset file.
@@ -53,7 +53,7 @@ def test(model_fp, data_fp):
 		
 		parsed.append(new_graph)
 	
-	Dataset('output/test').write_graphs(parsed)
+	Dataset(output_fp).write_graphs(parsed)
 
 
 

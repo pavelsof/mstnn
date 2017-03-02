@@ -69,7 +69,7 @@ class Cli:
 		"""
 		def _test(args):
 			from code.main import test
-			test(args.model_file, args.conllu_file)
+			test(args.model_file, args.conllu_file, args.output_file)
 		
 		usage = 'manage.py test model_file conllu_file'
 		description = 'test an mstnn model against conllu data'
@@ -82,6 +82,8 @@ class Cli:
 		subp.add_argument('conllu_file', help=(
 			'path to the test data; '
 			'assumed to be a unicode conllu file'))
+		subp.add_argument('output_file', help=(
+			'path where to write the parsed sentences (in conllu format)'))
 		
 		subp.set_defaults(func=_test)
 	
