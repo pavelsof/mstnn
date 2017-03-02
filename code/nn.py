@@ -63,7 +63,7 @@ class NeuralNetwork:
 		standard single-layer perceptron.
 		"""
 		grammar_branch = Sequential([
-			Dense(64, input_dim=244, init='uniform', activation='tanh')
+			Dense(64, input_dim=244, init='uniform', activation='relu')
 		])
 		
 		lexicon_branch = Sequential([
@@ -73,7 +73,7 @@ class NeuralNetwork:
 		
 		self.model = Sequential([
 			Merge([grammar_branch, lexicon_branch], mode='concat'),
-			Dense(128, init='uniform', activation='tanh'),
+			Dense(128, init='uniform', activation='relu'),
 			Dense(1, init='uniform', activation='sigmoid')
 		])
 		
