@@ -2,7 +2,7 @@ import itertools
 
 import networkx as nx
 
-from code.conllu import Dataset, write_graphs
+from code.conllu import Dataset
 from code.features import Extractor
 from code.mst import find_mst, Graph
 from code.nn import NeuralNetwork
@@ -53,7 +53,7 @@ def test(model_fp, data_fp):
 		
 		parsed.append(new_graph)
 	
-	write_graphs('output/test', parsed)
+	Dataset('output/test').write_graphs(parsed)
 
 
 

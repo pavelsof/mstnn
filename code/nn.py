@@ -78,7 +78,7 @@ class NeuralNetwork:
 				metrics=['accuracy'])
 	
 	
-	def train(self, dataset, extractor, epochs=2):
+	def train(self, dataset, extractor, epochs=10):
 		"""
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
