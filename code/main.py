@@ -11,25 +11,26 @@ from code.nn import NeuralNetwork
 
 def train(model_fp, data_fp, ud_version=2):
 	"""
-	Trains an mstnn instance. Expects a path where the trained model will be
-	written to, and a path to a .conllu dataset that will be used for training.
+	Trains an mstnn model. Expects a path where the model will be written to,
+	and a path to a .conllu dataset that will be used for training.
 	"""
 	dataset = Dataset(data_fp)
 	
 	extractor = Extractor(ud_version)
 	extractor.read(dataset)
 	
-	neural_net = NeuralNetwork()
+	neural_net = NeuralNetwork(vocab_size=extractor.get_lemma_vocab_size())
 	neural_net.train(dataset, extractor)
 	
 	save_model(model_fp, extractor, neural_net)
 
 
 
-def test(model_fp, data_fp, output_fp):
+def parse(model_fp, data_fp, output_fp):
 	"""
-	Tests a trained mstnn model against a .conllu dataset. Expects the path to
-	a previously trained mstnn model file and the path to the dataset file.
+	Parses a .conllu dataset using a trained mstnn model. Expects the path to a
+	previously trained mstnn model file, the path to the dataset file, and the
+	path where to write the parsed sentences.
 	"""
 	parsed = []
 	

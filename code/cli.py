@@ -29,7 +29,7 @@ class Cli:
 			title='subcommands')
 		
 		self._init_train()
-		self._init_test()
+		self._init_parse()
 		self._init_unittest()
 	
 	
@@ -43,7 +43,7 @@ class Cli:
 			from code.main import train
 			train(args.model_file, args.conllu_file, ud_version=args.ud_version)
 		
-		description = 'train an mstnn instance from conllu data'
+		description = 'train an mstnn model from conllu data'
 		
 		subp = self.subparsers.add_parser('train',
 			description=description, help=description)
@@ -61,31 +61,30 @@ class Cli:
 		subp.set_defaults(func=_train)
 	
 	
-	def _init_test(self):
+	def _init_parse(self):
 		"""
-		Inits the subparser that handles the test command. The latter expects a
-		previously trained model and a conllu data file against which to use
-		the model. Writes the performance stats to stdout.
+		Inits the subparser that handles the parse command. The latter expects
+		a previously trained model, a conllu dataset which to parse, and a path
+		to write the output to.
 		"""
-		def _test(args):
-			from code.main import test
-			test(args.model_file, args.conllu_file, args.output_file)
+		def _parse(args):
+			from code.main import parse
+			parse(args.model_file, args.conllu_file, args.output_file)
 		
-		usage = 'manage.py test model_file conllu_file'
-		description = 'test an mstnn model against conllu data'
+		description = 'parse conllu data using an mstnn model'
 		
-		subp = self.subparsers.add_parser('test', usage=usage,
+		subp = self.subparsers.add_parser('parse',
 			description=description, help=description)
 		
 		subp.add_argument('model_file', help=(
 			'path to an mstnn model'))
 		subp.add_argument('conllu_file', help=(
-			'path to the test data; '
+			'path to the data to parse; '
 			'assumed to be a unicode conllu file'))
 		subp.add_argument('output_file', help=(
 			'path where to write the parsed sentences (in conllu format)'))
 		
-		subp.set_defaults(func=_test)
+		subp.set_defaults(func=_parse)
 	
 	
 	def _init_unittest(self):

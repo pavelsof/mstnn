@@ -11,14 +11,18 @@ import numpy as np
 
 class NeuralNetwork:
 	
-	def __init__(self, model=None):
+	def __init__(self, model=None, vocab_size=None):
 		"""
-		Constructor. The keyword argument is expected to be a Keras model. If
-		not specified, a new model is created and compiled. In any case, the
-		Keras model should be compiled and ready to use right after the init.
+		Constructor. The first keyword argument should be a Keras model. If not
+		specified, a new model is created and compiled. In any case, the Keras
+		model should be compiled and ready to use right after the init.
+		
+		The remaining keyword arguments should be set if the first is not (they
+		are ignored otherwise).
 		"""
 		if model is None:
-			self._init_model()
+			assert isinstance(vocab_size, int)
+			self._init_model(vocab_size)
 		else:
 			self.model = model
 	
@@ -48,7 +52,7 @@ class NeuralNetwork:
 		self.model.save(model_fp, overwrite=True)
 	
 	
-	def _init_model(self):
+	def _init_model(self, vocab_size):
 		"""
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
@@ -63,7 +67,7 @@ class NeuralNetwork:
 		])
 		
 		lexicon_branch = Sequential([
-			Embedding(4222, 64, input_length=2),
+			Embedding(vocab_size, 64, input_length=2),
 			Flatten()
 		])
 		

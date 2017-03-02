@@ -37,6 +37,10 @@ class Extractor:
 		Constructor. The keyword argument specifies the UD version to use when
 		featurising the POS tags, dependency relations, and morphology. Raises
 		a ValueError if the UD version is unknown.
+		
+		The lemmas dict provides unique IDs to the lemmas found in the dataset
+		that the features are extracted from. The ID 0 is used for unrecognised
+		lemmas, hence the underscore.
 		"""
 		if ud_version == 1:
 			self.POS_TAGS = ud.POS_TAGS_V1
@@ -50,7 +54,9 @@ class Extractor:
 			raise ValueError('Unknown UD version: {}'.format(ud_version))
 		
 		self.ud_version = ud_version
+		
 		self.lemmas = defaultdict(lambda: len(self.lemmas))
+		self.lemmas['_']
 	
 	
 	@classmethod
@@ -100,25 +106,26 @@ class Extractor:
 		Reads the data provided by the given conllu.Dataset instance and
 		compiles the self.lemmas dict.
 		"""
-		self.lemmas['_']
-		
 		for sent in dataset.gen_sentences():
 			[self.lemmas[word.LEMMA] for word in sent]
 	
 	
 	def get_lemma_vocab_size(self):
 		"""
+		Returns the number of lemma IDs, i.e. the number of lemmas found during
+		reading + 1 (for the unrecognised lemmas ID). This is used in building
+		the embeddings layer of the neural network.
 		"""
 		return len(self.lemmas)
 	
 	
 	def featurise_lemma(self, lemma):
 		"""
-		Returns an integer uniquely identifying the given lemma. Raises a
-		FeatureError if the lemma has not been found during reading.
+		Returns an integer uniquely identifying the given lemma. If the lemma
+		has not been found during reading, returns 0.
 		"""
 		if lemma not in self.lemmas:
-			raise FeatureError('Unknown lemma: {}'.format(lemma))
+			return 0
 		
 		return self.lemmas[lemma]
 	
