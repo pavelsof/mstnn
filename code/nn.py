@@ -74,6 +74,7 @@ class NeuralNetwork:
 		self.model = Sequential([
 			Merge([grammar_branch, lexicon_branch], mode='concat'),
 			Dense(128, init='uniform', activation='relu'),
+			Dense(128, init='uniform', activation='relu'),
 			Dense(1, init='uniform', activation='sigmoid')
 		])
 		
