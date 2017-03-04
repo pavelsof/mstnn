@@ -1,11 +1,20 @@
+import enum
 import itertools
 
 from keras.layers.core import Dense, Flatten, Merge
 from keras.layers.embeddings import Embedding
 from keras.models import Sequential, load_model
+from keras.utils.np_utils import to_categorical
 
-import networkx as nx
 import numpy as np
+
+
+
+@enum.unique
+class Label(enum.IntEnum):
+	NO_EDGE = 0
+	A_TO_B = 1
+	B_TO_A = 2
 
 
 
@@ -75,11 +84,11 @@ class NeuralNetwork:
 			Merge([grammar_branch, lexicon_branch], mode='concat'),
 			Dense(128, init='uniform', activation='relu'),
 			Dense(128, init='uniform', activation='relu'),
-			Dense(1, init='uniform', activation='sigmoid')
+			Dense(len(Label), init='uniform', activation='sigmoid')
 		])
 		
 		self.model.compile(optimizer='sgd',
-				loss='binary_crossentropy',
+				loss='categorical_crossentropy',
 				metrics=['accuracy'])
 	
 	
@@ -87,34 +96,31 @@ class NeuralNetwork:
 		"""
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
-		
-		Currently each sample consists of concatenating the POS tag and
-		morphology feature vectors of the parent and the child of each edge.
 		"""
 		samples_grammar = []
 		samples_lexicon = []
 		targets = []
 		
 		for graph in dataset.gen_graphs():
-			for edge in graph.edges():
-				samples_grammar.append(extractor.featurise_edge(graph, edge))
+			edges = graph.edges()
+			for node_a, node_b in itertools.combinations(graph.nodes(), 2):
+				samples_grammar.append(
+					extractor.featurise_edge(graph, (node_a, node_b)))
 				samples_lexicon.append([
-					extractor.featurise_lemma(graph.node[edge[0]]['LEMMA']),
-					extractor.featurise_lemma(graph.node[edge[1]]['LEMMA'])
+					extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
+					extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
 				])
-				targets.append(1)
-			
-			for edge in nx.non_edges(graph):
-				samples_grammar.append(extractor.featurise_edge(graph, edge))
-				samples_lexicon.append([
-					extractor.featurise_lemma(graph.node[edge[0]]['LEMMA']),
-					extractor.featurise_lemma(graph.node[edge[1]]['LEMMA'])
-				])
-				targets.append(0)
+				
+				if (node_a, node_b) in edges:
+					targets.append(Label.A_TO_B)
+				elif (node_b, node_a) in edges:
+					targets.append(Label.B_TO_A)
+				else:
+					targets.append(Label.NO_EDGE)
 		
 		samples_grammar = np.array(samples_grammar)
 		samples_lexicon = np.array(samples_lexicon)
-		targets = np.array(targets)
+		targets = to_categorical(np.array(targets))
 		
 		self.model.fit([samples_grammar, samples_lexicon], targets,
 				batch_size=32, nb_epoch=epochs, shuffle=True)
@@ -124,14 +130,17 @@ class NeuralNetwork:
 		"""
 		Calculates the probabilities of each edge.
 		"""
+		scores = {}
+		
 		samples_grammar = []
 		samples_lexicon = []
 		
-		for edge in itertools.permutations(graph.nodes(), 2):
-			samples_grammar.append(extractor.featurise_edge(graph, edge))
+		for node_a, node_b in itertools.combinations(graph.nodes(), 2):
+			samples_grammar.append(
+				extractor.featurise_edge(graph, (node_a, node_b)))
 			samples_lexicon.append([
-				extractor.featurise_lemma(graph.node[edge[0]]['LEMMA']),
-				extractor.featurise_lemma(graph.node[edge[1]]['LEMMA'])
+				extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
+				extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
 			])
 		
 		samples_grammar = np.array(samples_grammar)
@@ -139,4 +148,8 @@ class NeuralNetwork:
 		
 		probs = self.model.predict_proba([samples_grammar, samples_lexicon])
 		
-		return probs
+		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
+			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
+			scores[(node_b, node_a)] = probs[index][Label.B_TO_A]
+		
+		return scores

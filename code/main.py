@@ -1,5 +1,3 @@
-import itertools
-
 import networkx as nx
 
 from code.conllu import Dataset
@@ -39,14 +37,9 @@ def parse(model_fp, data_fp, output_fp):
 	dataset = Dataset(data_fp)
 	
 	for graph in dataset.gen_graphs():
-		probs = neural_net.calc_probs(graph, extractor)
+		scores = neural_net.calc_probs(graph, extractor)
 		
-		nodes = list(graph.nodes())
-		scores = {
-			edge: probs[index][0]
-			for index, edge in enumerate(itertools.permutations(nodes, 2))}
-		
-		tree = find_mst(Graph(nodes, scores=scores))
+		tree = find_mst(Graph(list(graph.nodes()), scores=scores))
 		
 		new_graph = nx.DiGraph()
 		new_graph.add_nodes_from(graph.nodes(data=True))
