@@ -89,7 +89,7 @@ class NeuralNetwork:
 		standard single-layer perceptron.
 		"""
 		grammar_branch = Sequential([
-			Dense(64, input_dim=366, init='uniform', activation='relu')
+			Dense(64, input_dim=732, init='uniform', activation='relu')
 		])
 		
 		lexicon_branch = Sequential([
