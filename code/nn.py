@@ -1,3 +1,4 @@
+import collections
 import enum
 import itertools
 
@@ -12,9 +13,25 @@ import numpy as np
 
 @enum.unique
 class Label(enum.IntEnum):
-	NO_EDGE = 0
-	A_TO_B = 1
-	B_TO_A = 2
+	NO_EDGES = 0
+	
+	A_TO_B_AND_C = 1
+	A_TO_B = 2
+	A_TO_B_TO_C = 3
+	A_TO_C = 4
+	A_TO_C_TO_B = 5
+	
+	B_TO_A_AND_C = 6
+	B_TO_A = 7
+	B_TO_A_TO_C = 8
+	B_TO_C = 9
+	B_TO_C_TO_A = 10
+	
+	C_TO_A_AND_B = 11
+	C_TO_A = 12
+	C_TO_A_TO_B = 13
+	C_TO_B = 14
+	C_TO_B_TO_A = 15
 
 
 
@@ -72,11 +89,11 @@ class NeuralNetwork:
 		standard single-layer perceptron.
 		"""
 		grammar_branch = Sequential([
-			Dense(64, input_dim=244, init='uniform', activation='relu')
+			Dense(64, input_dim=366, init='uniform', activation='relu')
 		])
 		
 		lexicon_branch = Sequential([
-			Embedding(vocab_size, 64, input_length=2),
+			Embedding(vocab_size, 64, input_length=3),
 			Flatten()
 		])
 		
@@ -103,20 +120,45 @@ class NeuralNetwork:
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
-			for node_a, node_b in itertools.combinations(graph.nodes(), 2):
-				samples_grammar.append(
-					extractor.featurise_edge(graph, (node_a, node_b)))
+			for a, b, c in itertools.combinations(graph.nodes(), 3):
+				samples_grammar.append(np.concatenate([
+					extractor.featurise_edge(graph, (a, b)),
+					extractor.featurise_edge(graph, (b, c)),
+					extractor.featurise_edge(graph, (a, c))
+				]))
 				samples_lexicon.append([
-					extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
-					extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
+					extractor.featurise_lemma(graph.node[a]['LEMMA']),
+					extractor.featurise_lemma(graph.node[b]['LEMMA']),
+					extractor.featurise_lemma(graph.node[c]['LEMMA'])
 				])
 				
-				if (node_a, node_b) in edges:
-					targets.append(Label.A_TO_B)
-				elif (node_b, node_a) in edges:
-					targets.append(Label.B_TO_A)
-				else:
-					targets.append(Label.NO_EDGE)
+				tri = list(filter(lambda x: x[0] in [a, b, c] and x[1] in [a, b, c], edges))
+				label = None
+				
+				if not tri:
+					label = Label.NO_EDGES
+				elif len(tri) == 1:
+					if (a, b) in tri: label = Label.A_TO_B
+					elif (a, c) in tri: label = Label.A_TO_C
+					elif (b, a) in tri: label = Label.B_TO_A
+					elif (b, c) in tri: label = Label.B_TO_C
+					elif (c, a) in tri: label = Label.C_TO_A
+					elif (c, b) in tri: label = Label.C_TO_B
+				elif len(tri) == 2:
+					if (a, b) in tri and (a, c) in tri: label = Label.A_TO_B_AND_C
+					elif (a, b) in tri and (b, c) in tri: label = Label.A_TO_B_TO_C
+					elif (a, c) in tri and (c, b) in tri: label = Label.A_TO_C_TO_B
+					elif (b, a) in tri and (b, c) in tri: label = Label.B_TO_A_AND_C
+					elif (b, a) in tri and (a, c) in tri: label = Label.B_TO_A_TO_C
+					elif (b, c) in tri and (c, a) in tri: label = Label.B_TO_C_TO_A
+					elif (c, a) in tri and (c, b) in tri: label = Label.C_TO_A_AND_B
+					elif (c, a) in tri and (a, b) in tri: label = Label.C_TO_A_TO_B
+					elif (c, b) in tri and (b, a) in tri: label = Label.C_TO_B_TO_A
+				
+				if label is None:
+					raise ValueError('Something went wrong')
+				
+				targets.append(label)
 		
 		samples_grammar = np.array(samples_grammar)
 		samples_lexicon = np.array(samples_lexicon)
@@ -130,17 +172,21 @@ class NeuralNetwork:
 		"""
 		Calculates the probabilities of each edge.
 		"""
-		scores = {}
+		scores = collections.defaultdict(lambda: 0)
 		
 		samples_grammar = []
 		samples_lexicon = []
 		
-		for node_a, node_b in itertools.combinations(graph.nodes(), 2):
-			samples_grammar.append(
-				extractor.featurise_edge(graph, (node_a, node_b)))
+		for a, b, c in itertools.combinations(graph.nodes(), 3):
+			samples_grammar.append(np.concatenate([
+				extractor.featurise_edge(graph, (a, b)),
+				extractor.featurise_edge(graph, (b, c)),
+				extractor.featurise_edge(graph, (a, c))
+			]))
 			samples_lexicon.append([
-				extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
-				extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
+				extractor.featurise_lemma(graph.node[a]['LEMMA']),
+				extractor.featurise_lemma(graph.node[b]['LEMMA']),
+				extractor.featurise_lemma(graph.node[c]['LEMMA'])
 			])
 		
 		samples_grammar = np.array(samples_grammar)
@@ -148,8 +194,13 @@ class NeuralNetwork:
 		
 		probs = self.model.predict_proba([samples_grammar, samples_lexicon])
 		
-		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
-			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
-			scores[(node_b, node_a)] = probs[index][Label.B_TO_A]
+		for index, (a, b, c) in enumerate(itertools.combinations(graph.nodes(), 3)):
+			p = probs[index]
+			scores[(a, b)] = p[Label.A_TO_B_AND_C] + p[Label.A_TO_B] + p[Label.A_TO_B_TO_C] + p[Label.C_TO_A_TO_B]
+			scores[(b, a)] = p[Label.B_TO_A_AND_C] + p[Label.B_TO_A] + p[Label.B_TO_A_TO_C] + p[Label.C_TO_B_TO_A]
+			scores[(a, c)] = p[Label.A_TO_B_AND_C] + p[Label.A_TO_C] + p[Label.A_TO_C_TO_B] + p[Label.B_TO_A_TO_C]
+			scores[(c, a)] = p[Label.C_TO_A_AND_B] + p[Label.C_TO_A] + p[Label.C_TO_A_TO_B] + p[Label.B_TO_C_TO_A]
+			scores[(b, c)] = p[Label.B_TO_A_AND_C] + p[Label.B_TO_C] + p[Label.B_TO_C_TO_A] + p[Label.A_TO_B_TO_C]
+			scores[(c, b)] = p[Label.C_TO_A_AND_B] + p[Label.C_TO_B] + p[Label.C_TO_B_TO_A] + p[Label.A_TO_C_TO_B]
 		
 		return scores
