@@ -1,7 +1,7 @@
 import enum
 import itertools
 
-from keras.layers.core import Dense
+from keras.layers.core import Dense, Merge
 from keras.models import Sequential, load_model
 from keras.utils.np_utils import to_categorical
 
@@ -70,9 +70,18 @@ class NeuralNetwork:
 		embeddings. These two inputs are concatenated and then go through a
 		standard single-layer perceptron.
 		"""
+		grammar_branch = Sequential([
+			Dense(64, input_dim=244, init='uniform', activation='relu')
+		])
+		
+		rel_pos_branch = Sequential([
+			Dense(1, input_dim=1, init='uniform', activation='relu')
+		])
+		
 		self.model = Sequential([
-			Dense(64, input_dim=244, init='uniform', activation='relu'),
-			Dense(64, init='uniform', activation='relu'),
+			Merge([grammar_branch, rel_pos_branch], mode='concat'),
+			Dense(128, init='uniform', activation='relu'),
+			Dense(128, init='uniform', activation='relu'),
 			Dense(len(Label), init='uniform', activation='sigmoid')
 		])
 		
@@ -86,14 +95,17 @@ class NeuralNetwork:
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
 		"""
-		samples = []
+		samples_grammar = []
+		samples_rel_pos = []
+		
 		targets = []
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
 			for node_a, node_b in itertools.combinations(graph.nodes(), 2):
-				samples.append(
+				samples_grammar.append(
 					extractor.featurise_edge(graph, (node_a, node_b)))
+				samples_rel_pos.append(node_b - node_a)
 				
 				if (node_a, node_b) in edges:
 					targets.append(Label.A_TO_B)
@@ -102,11 +114,12 @@ class NeuralNetwork:
 				else:
 					targets.append(Label.NO_EDGE)
 		
-		samples = np.array(samples)
+		samples_grammar = np.array(samples_grammar)
+		samples_rel_pos = np.array(samples_rel_pos)
 		targets = to_categorical(np.array(targets))
 		
-		self.model.fit(samples, targets,
-				batch_size=32, nb_epoch=epochs, shuffle=True)
+		self.model.fit([samples_grammar, samples_rel_pos],
+				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
@@ -115,15 +128,18 @@ class NeuralNetwork:
 		"""
 		scores = {}
 		
-		samples = []
+		samples_grammar = []
+		samples_rel_pos = []
 		
 		for node_a, node_b in itertools.combinations(graph.nodes(), 2):
-			samples.append(
+			samples_grammar.append(
 				extractor.featurise_edge(graph, (node_a, node_b)))
+			samples_rel_pos.append(node_b-node_a)
 		
-		samples = np.array(samples)
+		samples_grammar = np.array(samples_grammar)
+		samples_rel_pos = np.array(samples_rel_pos)
 		
-		probs = self.model.predict_proba(samples)
+		probs = self.model.predict_proba([samples_grammar, samples_rel_pos])
 		
 		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
 			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
