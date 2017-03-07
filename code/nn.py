@@ -131,7 +131,7 @@ class NeuralNetwork:
 		targets = to_categorical(np.array(targets))
 		
 		self.model.fit([samples_grammar, samples_lexicon, samples_rel_pos],
-				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+				targets, batch_size=1, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
