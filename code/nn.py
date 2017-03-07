@@ -1,8 +1,7 @@
 import enum
 import itertools
 
-from keras.layers.core import Dense, Flatten, Merge
-from keras.layers.embeddings import Embedding
+from keras.layers.core import Dense
 from keras.models import Sequential, load_model
 from keras.utils.np_utils import to_categorical
 
@@ -71,19 +70,9 @@ class NeuralNetwork:
 		embeddings. These two inputs are concatenated and then go through a
 		standard single-layer perceptron.
 		"""
-		grammar_branch = Sequential([
-			Dense(64, input_dim=244, init='uniform', activation='relu')
-		])
-		
-		lexicon_branch = Sequential([
-			Embedding(vocab_size, 64, input_length=2),
-			Flatten()
-		])
-		
 		self.model = Sequential([
-			Merge([grammar_branch, lexicon_branch], mode='concat'),
-			Dense(128, init='uniform', activation='relu'),
-			Dense(128, init='uniform', activation='relu'),
+			Dense(64, input_dim=244, init='uniform', activation='relu'),
+			Dense(64, init='uniform', activation='relu'),
 			Dense(len(Label), init='uniform', activation='sigmoid')
 		])
 		
@@ -97,19 +86,14 @@ class NeuralNetwork:
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
 		"""
-		samples_grammar = []
-		samples_lexicon = []
+		samples = []
 		targets = []
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
 			for node_a, node_b in itertools.combinations(graph.nodes(), 2):
-				samples_grammar.append(
+				samples.append(
 					extractor.featurise_edge(graph, (node_a, node_b)))
-				samples_lexicon.append([
-					extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
-					extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
-				])
 				
 				if (node_a, node_b) in edges:
 					targets.append(Label.A_TO_B)
@@ -118,11 +102,10 @@ class NeuralNetwork:
 				else:
 					targets.append(Label.NO_EDGE)
 		
-		samples_grammar = np.array(samples_grammar)
-		samples_lexicon = np.array(samples_lexicon)
+		samples = np.array(samples)
 		targets = to_categorical(np.array(targets))
 		
-		self.model.fit([samples_grammar, samples_lexicon], targets,
+		self.model.fit(samples, targets,
 				batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
@@ -132,21 +115,15 @@ class NeuralNetwork:
 		"""
 		scores = {}
 		
-		samples_grammar = []
-		samples_lexicon = []
+		samples = []
 		
 		for node_a, node_b in itertools.combinations(graph.nodes(), 2):
-			samples_grammar.append(
+			samples.append(
 				extractor.featurise_edge(graph, (node_a, node_b)))
-			samples_lexicon.append([
-				extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
-				extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
-			])
 		
-		samples_grammar = np.array(samples_grammar)
-		samples_lexicon = np.array(samples_lexicon)
+		samples = np.array(samples)
 		
-		probs = self.model.predict_proba([samples_grammar, samples_lexicon])
+		probs = self.model.predict_proba(samples)
 		
 		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
 			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
