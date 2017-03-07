@@ -80,8 +80,12 @@ class NeuralNetwork:
 			Flatten()
 		])
 		
+		rel_pos_branch = Sequential([
+			Dense(1, input_dim=1, init='uniform', activation='relu')
+		])
+		
 		self.model = Sequential([
-			Merge([grammar_branch, lexicon_branch], mode='concat'),
+			Merge([grammar_branch, lexicon_branch, rel_pos_branch], mode='concat'),
 			Dense(128, init='uniform', activation='relu'),
 			Dense(128, init='uniform', activation='relu'),
 			Dense(len(Label), init='uniform', activation='sigmoid')
@@ -99,6 +103,8 @@ class NeuralNetwork:
 		"""
 		samples_grammar = []
 		samples_lexicon = []
+		samples_rel_pos = []
+		
 		targets = []
 		
 		for graph in dataset.gen_graphs():
@@ -110,6 +116,7 @@ class NeuralNetwork:
 					extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
 					extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
 				])
+				samples_rel_pos.append(node_b - node_a)
 				
 				if (node_a, node_b) in edges:
 					targets.append(Label.A_TO_B)
@@ -120,10 +127,11 @@ class NeuralNetwork:
 		
 		samples_grammar = np.array(samples_grammar)
 		samples_lexicon = np.array(samples_lexicon)
+		samples_rel_pos = np.array(samples_rel_pos)
 		targets = to_categorical(np.array(targets))
 		
-		self.model.fit([samples_grammar, samples_lexicon], targets,
-				batch_size=32, nb_epoch=epochs, shuffle=True)
+		self.model.fit([samples_grammar, samples_lexicon, samples_rel_pos],
+				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
@@ -134,6 +142,7 @@ class NeuralNetwork:
 		
 		samples_grammar = []
 		samples_lexicon = []
+		samples_rel_pos = []
 		
 		for node_a, node_b in itertools.combinations(graph.nodes(), 2):
 			samples_grammar.append(
@@ -142,11 +151,14 @@ class NeuralNetwork:
 				extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
 				extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
 			])
+			samples_rel_pos.append(node_b-node_a)
 		
 		samples_grammar = np.array(samples_grammar)
 		samples_lexicon = np.array(samples_lexicon)
+		samples_rel_pos = np.array(samples_rel_pos)
 		
-		probs = self.model.predict_proba([samples_grammar, samples_lexicon])
+		probs = self.model.predict_proba([
+				samples_grammar, samples_lexicon, samples_rel_pos])
 		
 		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
 			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
