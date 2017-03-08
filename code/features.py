@@ -39,8 +39,9 @@ class Extractor:
 		a ValueError if the UD version is unknown.
 		
 		The lemmas dict provides unique IDs to the lemmas found in the dataset
-		that the features are extracted from. The ID 0 is used for unrecognised
-		lemmas, hence the underscore.
+		that the features are extracted from. ID 0 is used for unrecognised
+		lemmas, hence the underscore. ID 1 is used for the non-standard root
+		node lemma (__root__).
 		"""
 		if ud_version == 1:
 			self.POS_TAGS = ud.POS_TAGS_V1
@@ -57,6 +58,7 @@ class Extractor:
 		
 		self.lemmas = defaultdict(lambda: len(self.lemmas))
 		self.lemmas['_']
+		self.lemmas['__root__']
 	
 	
 	@classmethod

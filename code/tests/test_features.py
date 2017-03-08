@@ -5,7 +5,7 @@ from unittest import TestCase
 
 from hypothesis.strategies import composite, dictionaries, integers
 from hypothesis.strategies import sampled_from, sets, text
-from hypothesis import given
+from hypothesis import assume, given
 
 import numpy as np
 
@@ -34,6 +34,24 @@ class FeaturesTestCase(TestCase):
 	
 	def setUp(self):
 		self.ext = Extractor(ud_version=2)
+	
+	
+	@given(sets(text()))
+	def test_featurise_lemma(self, lemmas):
+		assume(all([lemma not in ['_', '__root__'] for lemma in lemmas]))
+		
+		extractor = Extractor(ud_version=2)
+		for lemma in lemmas:
+			extractor.lemmas[lemma]
+		
+		self.assertEqual(extractor.get_lemma_vocab_size(), len(lemmas)+2)
+		
+		self.assertEqual(extractor.featurise_lemma('_'), 0)
+		self.assertEqual(extractor.featurise_lemma('__root__'), 1)
+		
+		res = [extractor.featurise_lemma(lemma) for lemma in lemmas]
+		self.assertEqual(len(res), len(lemmas))
+		self.assertTrue(all([number not in [0, 1] for number in res]))
 	
 	
 	@given(sampled_from(POS_TAGS))
