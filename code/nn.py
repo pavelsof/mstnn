@@ -1,9 +1,8 @@
 import enum
 import itertools
 
-from keras.layers.core import Dense, Flatten, Merge
-from keras.layers.embeddings import Embedding
-from keras.models import Sequential, load_model
+from keras.layers import Dense, Embedding, Flatten, Input, merge
+from keras.models import load_model, Model
 from keras.utils.np_utils import to_categorical
 
 import numpy as np
@@ -71,25 +70,23 @@ class NeuralNetwork:
 		embeddings. These two inputs are concatenated and then go through a
 		standard single-layer perceptron.
 		"""
-		grammar_branch = Sequential([
-			Dense(64, input_dim=244, init='uniform', activation='relu')
-		])
+		grammar_input = Input(shape=(244,), name='grammar_input')
+		grammar = Dense(64, init='uniform', activation='relu')(grammar_input)
 		
-		lexicon_branch = Sequential([
-			Embedding(vocab_size, 64, input_length=2),
-			Flatten()
-		])
+		lemmas_input = Input(shape=(2,), name='lemmas_input')
+		lemmas = Embedding(vocab_size, 64, input_length=2)(lemmas_input)
+		lemmas = Flatten()(lemmas)
 		
-		rel_pos_branch = Sequential([
-			Dense(1, input_dim=1, init='uniform', activation='relu')
-		])
+		rel_pos_input = Input(shape=(1,), name='rel_pos_input')
+		rel_pos = Dense(1, init='uniform', activation='relu')(rel_pos_input)
 		
-		self.model = Sequential([
-			Merge([grammar_branch, lexicon_branch, rel_pos_branch], mode='concat'),
-			Dense(128, init='uniform', activation='relu'),
-			Dense(128, init='uniform', activation='relu'),
-			Dense(len(Label), init='uniform', activation='sigmoid')
-		])
+		x = merge([grammar, lemmas, rel_pos], mode='concat')
+		x = Dense(128, init='uniform', activation='relu')(x)
+		x = Dense(128, init='uniform', activation='relu')(x)
+		output = Dense(len(Label), init='uniform', activation='sigmoid')(x)
+		
+		self.model = Model(input=[
+			grammar_input, lemmas_input, rel_pos_input], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='categorical_crossentropy',
@@ -157,8 +154,8 @@ class NeuralNetwork:
 		samples_lexicon = np.array(samples_lexicon)
 		samples_rel_pos = np.array(samples_rel_pos)
 		
-		probs = self.model.predict_proba([
-				samples_grammar, samples_lexicon, samples_rel_pos])
+		probs = self.model.predict([
+			samples_grammar, samples_lexicon, samples_rel_pos], verbose=1)
 		
 		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
 			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
