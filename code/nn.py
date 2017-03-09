@@ -66,16 +66,19 @@ class NeuralNetwork:
 		training; for testing, the Keras model is loaded.
 		
 		The network consists of three input branches, one handling the edges'
-		POS tags and morphological features, the second handling the lemma
-		embeddings, and the third handling the relative positions of the input
+		POS tags and morphological features, another handling the lemmas
+		embeddings, and a third handling the relative positions of the input
 		nodes. These branches then are concatenated and go through a standard
 		two-layer perceptron.
 		"""
 		grammar_input = Input(shape=(244,), name='grammar_input')
 		grammar = Dense(64, init='uniform', activation='relu')(grammar_input)
 		
-		lemmas_input = Input(shape=(2,), name='lemmas_input')
-		lemmas = Embedding(vocab_size, 64, input_length=2)(lemmas_input)
+		lemma_a = Input(shape=(1,))
+		lemma_b = Input(shape=(1,))
+		shared_embed = Embedding(vocab_size, 64, input_length=1)
+		lemmas = merge([
+			shared_embed(lemma_a), shared_embed(lemma_b)], mode='concat')
 		lemmas = Flatten()(lemmas)
 		
 		rel_pos_input = Input(shape=(1,), name='rel_pos_input')
@@ -87,7 +90,7 @@ class NeuralNetwork:
 		output = Dense(len(Label), init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			grammar_input, lemmas_input, rel_pos_input], output=output)
+			grammar_input, lemma_a, lemma_b, rel_pos_input], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='categorical_crossentropy',
@@ -99,22 +102,20 @@ class NeuralNetwork:
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
 		"""
-		samples_grammar = []
-		samples_lexicon = []
-		samples_rel_pos = []
+		grammar = []
+		lemmas_a = []
+		lemmas_b = []
+		rel_pos = []
 		
 		targets = []
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
 			for a, b in itertools.combinations(graph.nodes(), 2):
-				samples_grammar.append(
-					extractor.featurise_edge(graph, (a, b)))
-				samples_lexicon.append([
-					extractor.featurise_lemma(graph.node[a]['LEMMA']),
-					extractor.featurise_lemma(graph.node[b]['LEMMA'])
-				])
-				samples_rel_pos.append(b - a)
+				grammar.append(extractor.featurise_edge(graph, (a, b)))
+				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
+				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
+				rel_pos.append(b - a)
 				
 				if (a, b) in edges:
 					targets.append(Label.A_TO_B)
@@ -123,12 +124,13 @@ class NeuralNetwork:
 				else:
 					targets.append(Label.NO_EDGE)
 		
-		samples_grammar = np.array(samples_grammar)
-		samples_lexicon = np.array(samples_lexicon)
-		samples_rel_pos = np.array(samples_rel_pos)
+		grammar = np.array(grammar)
+		lemmas_a = np.array(lemmas_a)
+		lemmas_b = np.array(lemmas_b)
+		rel_pos = np.array(rel_pos)
 		targets = to_categorical(np.array(targets))
 		
-		self.model.fit([samples_grammar, samples_lexicon, samples_rel_pos],
+		self.model.fit([grammar, lemmas_a, lemmas_b, rel_pos],
 				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
@@ -138,25 +140,23 @@ class NeuralNetwork:
 		"""
 		scores = {}
 		
-		samples_grammar = []
-		samples_lexicon = []
-		samples_rel_pos = []
+		grammar = []
+		lemmas_a = []
+		lemmas_b = []
+		rel_pos = []
 		
 		for a, b in itertools.combinations(graph.nodes(), 2):
-			samples_grammar.append(
-				extractor.featurise_edge(graph, (a, b)))
-			samples_lexicon.append([
-				extractor.featurise_lemma(graph.node[a]['LEMMA']),
-				extractor.featurise_lemma(graph.node[b]['LEMMA'])
-			])
-			samples_rel_pos.append(b - a)
+			grammar.append(extractor.featurise_edge(graph, (a, b)))
+			lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
+			lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
+			rel_pos.append(b - a)
 		
-		samples_grammar = np.array(samples_grammar)
-		samples_lexicon = np.array(samples_lexicon)
-		samples_rel_pos = np.array(samples_rel_pos)
+		grammar = np.array(grammar)
+		lemmas_a = np.array(lemmas_a)
+		lemmas_b = np.array(lemmas_b)
+		rel_pos = np.array(rel_pos)
 		
-		probs = self.model.predict([
-			samples_grammar, samples_lexicon, samples_rel_pos], verbose=1)
+		probs = self.model.predict([grammar, lemmas_a, lemmas_b, rel_pos], verbose=1)
 		
 		for index, (a, b) in enumerate(itertools.combinations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][Label.A_TO_B]
