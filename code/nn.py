@@ -65,10 +65,11 @@ class NeuralNetwork:
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network consists of two input branches, one handling the edges' POS
-		tags and morphological features, and the other handling the lemma
-		embeddings. These two inputs are concatenated and then go through a
-		standard single-layer perceptron.
+		The network consists of three input branches, one handling the edges'
+		POS tags and morphological features, the second handling the lemma
+		embeddings, and the third handling the relative positions of the input
+		nodes. These branches then are concatenated and go through a standard
+		two-layer perceptron.
 		"""
 		grammar_input = Input(shape=(244,), name='grammar_input')
 		grammar = Dense(64, init='uniform', activation='relu')(grammar_input)
@@ -106,18 +107,18 @@ class NeuralNetwork:
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
-			for node_a, node_b in itertools.combinations(graph.nodes(), 2):
+			for a, b in itertools.combinations(graph.nodes(), 2):
 				samples_grammar.append(
-					extractor.featurise_edge(graph, (node_a, node_b)))
+					extractor.featurise_edge(graph, (a, b)))
 				samples_lexicon.append([
-					extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
-					extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
+					extractor.featurise_lemma(graph.node[a]['LEMMA']),
+					extractor.featurise_lemma(graph.node[b]['LEMMA'])
 				])
-				samples_rel_pos.append(node_b - node_a)
+				samples_rel_pos.append(b - a)
 				
-				if (node_a, node_b) in edges:
+				if (a, b) in edges:
 					targets.append(Label.A_TO_B)
-				elif (node_b, node_a) in edges:
+				elif (b, a) in edges:
 					targets.append(Label.B_TO_A)
 				else:
 					targets.append(Label.NO_EDGE)
@@ -141,14 +142,14 @@ class NeuralNetwork:
 		samples_lexicon = []
 		samples_rel_pos = []
 		
-		for node_a, node_b in itertools.combinations(graph.nodes(), 2):
+		for a, b in itertools.combinations(graph.nodes(), 2):
 			samples_grammar.append(
-				extractor.featurise_edge(graph, (node_a, node_b)))
+				extractor.featurise_edge(graph, (a, b)))
 			samples_lexicon.append([
-				extractor.featurise_lemma(graph.node[node_a]['LEMMA']),
-				extractor.featurise_lemma(graph.node[node_b]['LEMMA'])
+				extractor.featurise_lemma(graph.node[a]['LEMMA']),
+				extractor.featurise_lemma(graph.node[b]['LEMMA'])
 			])
-			samples_rel_pos.append(node_b-node_a)
+			samples_rel_pos.append(b - a)
 		
 		samples_grammar = np.array(samples_grammar)
 		samples_lexicon = np.array(samples_lexicon)
@@ -157,8 +158,8 @@ class NeuralNetwork:
 		probs = self.model.predict([
 			samples_grammar, samples_lexicon, samples_rel_pos], verbose=1)
 		
-		for index, (node_a, node_b) in enumerate(itertools.combinations(graph.nodes(), 2)):
-			scores[(node_a, node_b)] = probs[index][Label.A_TO_B]
-			scores[(node_b, node_a)] = probs[index][Label.B_TO_A]
+		for index, (a, b) in enumerate(itertools.combinations(graph.nodes(), 2)):
+			scores[(a, b)] = probs[index][Label.A_TO_B]
+			scores[(b, a)] = probs[index][Label.B_TO_A]
 		
 		return scores
