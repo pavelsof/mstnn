@@ -71,18 +71,18 @@ class NeuralNetwork:
 		nodes. These branches then are concatenated and go through a standard
 		two-layer perceptron.
 		"""
-		grammar_input = Input(shape=(244,), name='grammar_input')
-		grammar = Dense(64, init='uniform', activation='relu')(grammar_input)
+		grammar_vec = Input(shape=(244,))
+		grammar = Dense(64, init='uniform', activation='relu')(grammar_vec)
 		
-		lemma_a = Input(shape=(1,))
-		lemma_b = Input(shape=(1,))
-		shared_embed = Embedding(vocab_size, 64, input_length=1)
+		lemma_a = Input(shape=(1,), dtype='int32')
+		lemma_b = Input(shape=(1,), dtype='int32')
+		lemma_embed = Embedding(vocab_size, 64, input_length=1)
 		lemmas = merge([
-			shared_embed(lemma_a), shared_embed(lemma_b)], mode='concat')
+			lemma_embed(lemma_a), lemma_embed(lemma_b)], mode='concat')
 		lemmas = Flatten()(lemmas)
 		
-		rel_pos_input = Input(shape=(1,), name='rel_pos_input')
-		rel_pos = Dense(1, init='uniform', activation='relu')(rel_pos_input)
+		rel_pos_raw = Input(shape=(1,))
+		rel_pos = Dense(1, init='uniform', activation='relu')(rel_pos_raw)
 		
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='uniform', activation='relu')(x)
@@ -90,7 +90,7 @@ class NeuralNetwork:
 		output = Dense(len(Label), init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			grammar_input, lemma_a, lemma_b, rel_pos_input], output=output)
+			grammar_vec, lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='categorical_crossentropy',
