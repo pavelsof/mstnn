@@ -1,19 +1,9 @@
-import enum
 import itertools
 
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
-from keras.utils.np_utils import to_categorical
 
 import numpy as np
-
-
-
-@enum.unique
-class Label(enum.IntEnum):
-	NO_EDGE = 0
-	A_TO_B = 1
-	B_TO_A = 2
 
 
 
@@ -87,13 +77,13 @@ class NeuralNetwork:
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='uniform', activation='relu')(x)
 		x = Dense(128, init='uniform', activation='relu')(x)
-		output = Dense(len(Label), init='uniform', activation='sigmoid')(x)
+		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
 			grammar_vec, lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
-				loss='categorical_crossentropy',
+				loss='binary_crossentropy',
 				metrics=['accuracy'])
 	
 	
@@ -111,24 +101,19 @@ class NeuralNetwork:
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
-			for a, b in itertools.combinations(graph.nodes(), 2):
+			for a, b in itertools.permutations(graph.nodes(), 2):
 				grammar.append(extractor.featurise_edge(graph, (a, b)))
 				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
 				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
 				rel_pos.append(b - a)
 				
-				if (a, b) in edges:
-					targets.append(Label.A_TO_B)
-				elif (b, a) in edges:
-					targets.append(Label.B_TO_A)
-				else:
-					targets.append(Label.NO_EDGE)
+				targets.append((a, b) in edges)
 		
 		grammar = np.array(grammar)
 		lemmas_a = np.array(lemmas_a)
 		lemmas_b = np.array(lemmas_b)
 		rel_pos = np.array(rel_pos)
-		targets = to_categorical(np.array(targets))
+		targets = np.array(targets)
 		
 		self.model.fit([grammar, lemmas_a, lemmas_b, rel_pos],
 				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
@@ -145,7 +130,7 @@ class NeuralNetwork:
 		lemmas_b = []
 		rel_pos = []
 		
-		for a, b in itertools.combinations(graph.nodes(), 2):
+		for a, b in itertools.permutations(graph.nodes(), 2):
 			grammar.append(extractor.featurise_edge(graph, (a, b)))
 			lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
 			lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
@@ -158,8 +143,7 @@ class NeuralNetwork:
 		
 		probs = self.model.predict([grammar, lemmas_a, lemmas_b, rel_pos], verbose=1)
 		
-		for index, (a, b) in enumerate(itertools.combinations(graph.nodes(), 2)):
+		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][Label.A_TO_B]
-			scores[(b, a)] = probs[index][Label.B_TO_A]
 		
 		return scores
