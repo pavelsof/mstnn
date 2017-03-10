@@ -72,17 +72,17 @@ class NeuralNetwork:
 		two-layer perceptron.
 		"""
 		grammar_vec = Input(shape=(244,))
-		grammar = Dense(64, init='uniform', activation='relu')(grammar_vec)
+		grammar = Dense(128, init='uniform', activation='relu')(grammar_vec)
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
-		lemma_embed = Embedding(vocab_size, 64, input_length=1)
+		lemma_embed = Embedding(vocab_size, 512, input_length=1)
 		lemmas = merge([
-			lemma_embed(lemma_a), lemma_embed(lemma_b)], mode='concat')
-		lemmas = Flatten()(lemmas)
+			Flatten()(lemma_embed(lemma_a)),
+			Flatten()(lemma_embed(lemma_b))], mode='concat')
 		
 		rel_pos_raw = Input(shape=(1,))
-		rel_pos = Dense(1, init='uniform', activation='relu')(rel_pos_raw)
+		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='uniform', activation='relu')(x)
