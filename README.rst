@@ -35,8 +35,15 @@ Something like this should do::
     pip install -r requirements.txt
     python manage.py unittest
 
+The neural network is built entirely on Keras and the latter's backend should
+not matter. However, the requirements list Theano because TensorFlow tends to
+crash every other time (most likely due to `this unresolved issue`_).
+
 
 licence
 =======
 
 MIT. Do as you please and praise the snake gods.
+
+
+.. _`this unresolved issue`: https://github.com/tensorflow/tensorflow/issues/3388
