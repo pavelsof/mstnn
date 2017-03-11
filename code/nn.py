@@ -66,7 +66,7 @@ class NeuralNetwork:
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
-		lemma_embed = Embedding(vocab_size, 512, input_length=1)
+		lemma_embed = Embedding(vocab_size, 256, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
