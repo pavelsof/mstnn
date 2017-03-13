@@ -63,7 +63,7 @@ class NeuralNetwork:
 		two-layer perceptron.
 		"""
 		grammar_vec = Input(shape=(244,))
-		grammar = Dense(128, init='uniform', activation='relu')(grammar_vec)
+		grammar = Dense(128, init='he_uniform', activation='relu')(grammar_vec)
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
@@ -76,9 +76,9 @@ class NeuralNetwork:
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
-		x = Dense(128, init='he_normal')(x)
+		x = Dense(128, init='he_uniform')(x)
 		x = LeakyReLU(alpha=0.2)(x)
-		x = Dense(128, init='he_normal')(x)
+		x = Dense(128, init='he_uniform')(x)
 		x = LeakyReLU(alpha=0.2)(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
