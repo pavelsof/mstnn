@@ -1,5 +1,6 @@
 import itertools
 
+from keras.layers.advanced_activations import LeakyReLU
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
@@ -75,8 +76,10 @@ class NeuralNetwork:
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
-		x = Dense(128, init='uniform', activation='relu')(x)
-		x = Dense(128, init='uniform', activation='relu')(x)
+		x = Dense(128, init='he_normal')(x)
+		x = LeakyReLU(alpha=0.2)(x)
+		x = Dense(128, init='he_normal')(x)
+		x = LeakyReLU(alpha=0.2)(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
