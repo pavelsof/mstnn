@@ -1,4 +1,5 @@
 import itertools
+import random
 
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
@@ -102,6 +103,10 @@ class NeuralNetwork:
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
 			for a, b in itertools.permutations(graph.nodes(), 2):
+				if (a, b) not in edges:
+					if random.random() < 0.5:
+						continue
+				
 				grammar.append(extractor.featurise_edge(graph, (a, b)))
 				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
 				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))

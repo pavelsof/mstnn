@@ -1,9 +1,18 @@
+import random
+
 import networkx as nx
 
 from code.conllu import Dataset
 from code.features import Extractor
 from code.mst import find_mst, Graph
 from code.nn import NeuralNetwork
+
+
+
+"""
+Probably not the best place to set the random seed.
+"""
+random.seed(42)
 
 
 
