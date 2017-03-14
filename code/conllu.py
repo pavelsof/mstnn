@@ -102,11 +102,15 @@ class Dataset:
 		The graph edges are directed from parent to child; DEPREL is stored as
 		an edge attribute.
 		
+		Unlike self.gen_sentences, the output here has an explicit root node
+		with its own POS tag (ROOT) and lemma (__root__) which are not part of
+		the UD standard, but still needed for the purposes of mstnn.
+		
 		Raises ConlluError if the file does not conform to the ConLL-U format.
 		"""
 		for sent in self.gen_sentences():
 			graph = nx.DiGraph()
-			graph.add_node(0, UPOSTAG='ROOT', FEATS='_', LEMMA='_')
+			graph.add_node(0, UPOSTAG='ROOT', FEATS='_', LEMMA='__root__')
 			
 			for word in sent:
 				graph.add_node(word.ID,
