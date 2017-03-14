@@ -116,7 +116,7 @@ class NeuralNetwork:
 		targets = np.array(targets)
 		
 		self.model.fit([grammar, lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=1, nb_epoch=epochs, shuffle=True)
+				targets, batch_size=16, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
