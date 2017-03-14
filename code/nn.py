@@ -71,19 +71,25 @@ class NeuralNetwork:
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
 		
+		aux_output = Dense(1, init='uniform', activation='sigmoid',
+				name='aux')(lemmas)
+		
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='uniform', activation='relu')(x)
 		x = Dense(128, init='uniform', activation='relu')(x)
-		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
-		self.model = Model(input=[
-			grammar_vec, lemma_a, lemma_b, rel_pos_raw], output=output)
+		main_output = Dense(1, init='uniform', activation='sigmoid',
+				name='main')(x)
+		
+		self.model = Model(output=[main_output, aux_output],
+			input=[grammar_vec, lemma_a, lemma_b, rel_pos_raw])
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
+				loss_weights=[1, 0.2],
 				metrics=['accuracy'])
 	
 	
@@ -116,7 +122,8 @@ class NeuralNetwork:
 		targets = np.array(targets)
 		
 		self.model.fit([grammar, lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+				[targets, targets],
+				batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
