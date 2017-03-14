@@ -149,6 +149,7 @@ class NeuralNetwork:
 		rel_pos = np.array(rel_pos)
 		
 		probs = self.model.predict([grammar, lemmas_a, lemmas_b, rel_pos], verbose=1)
+		probs = probs[0]
 		
 		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][0]
