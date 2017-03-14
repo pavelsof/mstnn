@@ -77,9 +77,9 @@ class NeuralNetwork:
 		
 		x = merge([grammar, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform')(x)
-		x = LeakyReLU(alpha=0.2)(x)
+		x = LeakyReLU(alpha=0.01)(x)
 		x = Dense(128, init='he_uniform')(x)
-		x = LeakyReLU(alpha=0.2)(x)
+		x = LeakyReLU(alpha=0.01)(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
