@@ -72,7 +72,6 @@ class NeuralNetwork:
 		feats_a = Input(shape=(104,))
 		feats_b = Input(shape=(104,))
 		feats = merge([feats_a, feats_b], mode='concat')
-		feats = Dense(64, init='uniform', activation='relu')(feats)
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
@@ -81,16 +80,15 @@ class NeuralNetwork:
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
 		
-		rel_pos_raw = Input(shape=(1,))
-		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
+		rel_pos = Input(shape=(1,))
 		
 		x = merge([pos_tags, feats, lemmas, rel_pos], mode='concat')
-		x = Dense(128, init='he_uniform', activation='relu')(x)
-		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dense(256, init='he_uniform', activation='relu')(x)
+		x = Dense(256, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+			lemma_a, lemma_b, rel_pos], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
