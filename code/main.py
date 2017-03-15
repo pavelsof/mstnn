@@ -17,7 +17,7 @@ def train(model_fp, data_fp, ud_version=2):
 	extractor = Extractor(ud_version)
 	extractor.read(dataset)
 	
-	neural_net = NeuralNetwork(vocab_size=extractor.get_lemma_vocab_size())
+	neural_net = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes())
 	neural_net.train(dataset, extractor)
 	
 	save_model(model_fp, extractor, neural_net)
