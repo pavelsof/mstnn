@@ -56,41 +56,40 @@ class NeuralNetwork:
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network consists of four input branches, one handling the edges'
-		POS tags, another handling the morphological features, a third handling
-		the lemmas embeddings, and a fourth handling the relative positions of
-		the input nodes. These branches then are concatenated and go through a
-		standard two-layer perceptron.
+		The network takes as input the POS tags, the morphological features and
+		the lemmas of two nodes, as well as their relative position to each
+		other, and produces the probability of an edge between these two nodes.
 		"""
 		pos_tag_a = Input(shape=(1,), dtype='int32')
 		pos_tag_b = Input(shape=(1,), dtype='int32')
-		pos_tag_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
-		pos_tags = merge([
-			Flatten()(pos_tag_embed(pos_tag_a)),
-			Flatten()(pos_tag_embed(pos_tag_b))], mode='concat')
-		
 		feats_a = Input(shape=(104,))
 		feats_b = Input(shape=(104,))
-		feats = merge([feats_a, feats_b], mode='concat')
-		feats = Dense(64, init='uniform', activation='relu')(feats)
-		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
+		rel_pos = Input(shape=(1,))
+		
+		pos_tag_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
 		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
-		lemmas = merge([
+		
+		a = merge([
 			Flatten()(lemma_embed(lemma_a)),
-			Flatten()(lemma_embed(lemma_b))], mode='concat')
+			Flatten()(pos_tag_embed(pos_tag_a)),
+			feats_a], mode='concat')
+		a = Dense(256, init='he_uniform', activation='relu')(a)
 		
-		rel_pos_raw = Input(shape=(1,))
-		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
+		b = merge([
+			Flatten()(lemma_embed(lemma_b)),
+			Flatten()(pos_tag_embed(pos_tag_b)),
+			feats_b], mode='concat')
+		b = Dense(256, init='he_uniform', activation='relu')(b)
 		
-		x = merge([pos_tags, feats, lemmas, rel_pos], mode='concat')
-		x = Dense(128, init='he_uniform', activation='relu')(x)
-		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = merge([a, b, rel_pos], mode='concat')
+		x = Dense(256, init='he_uniform', activation='relu')(x)
+		x = Dense(256, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+				lemma_a, lemma_b, rel_pos], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
