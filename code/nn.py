@@ -75,17 +75,15 @@ class NeuralNetwork:
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(pos_tag_embed(pos_tag_a)),
 			feats_a], mode='concat')
-		a = Dense(256, init='he_uniform', activation='relu')(a)
 		
 		b = merge([
 			Flatten()(lemma_embed(lemma_b)),
 			Flatten()(pos_tag_embed(pos_tag_b)),
 			feats_b], mode='concat')
-		b = Dense(256, init='he_uniform', activation='relu')(b)
 		
 		x = merge([a, b, rel_pos], mode='concat')
-		x = Dense(256, init='he_uniform', activation='relu')(x)
-		x = Dense(256, init='he_uniform', activation='relu')(x)
+		x = Dense(512, init='he_uniform', activation='relu')(x)
+		x = Dense(512, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
