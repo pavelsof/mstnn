@@ -69,6 +69,8 @@ class NeuralNetwork:
 			Flatten()(pos_tag_embed(pos_tag_a)),
 			Flatten()(pos_tag_embed(pos_tag_b))], mode='concat')
 		
+		pos_output = Dense(1, init='uniform', activation='sigmoid', name='p')(pos_tags)
+		
 		feats_a = Input(shape=(104,))
 		feats_b = Input(shape=(104,))
 		feats = merge([feats_a, feats_b], mode='concat')
@@ -87,10 +89,10 @@ class NeuralNetwork:
 		x = merge([pos_tags, feats, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
-		output = Dense(1, init='uniform', activation='sigmoid')(x)
+		output = Dense(1, init='uniform', activation='sigmoid', name='m')(x)
 		
 		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+			lemma_a, lemma_b, rel_pos_raw], output=[output, pos_output])
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
@@ -139,7 +141,8 @@ class NeuralNetwork:
 		
 		self.model.fit([pos_tag_a, pos_tag_b, feats_a, feats_b,
 				lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+				[targets, targets],
+				batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
@@ -178,6 +181,7 @@ class NeuralNetwork:
 		
 		probs = self.model.predict([pos_tag_a, pos_tag_b, feats_a, feats_b,
 				lemmas_a, lemmas_b, rel_pos], verbose=1)
+		probs = probs[0]
 		
 		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][0]
