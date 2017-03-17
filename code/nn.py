@@ -96,6 +96,7 @@ class NeuralNetwork:
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
+				loss_weights=[1, 0.2],
 				metrics=['accuracy'])
 	
 	
