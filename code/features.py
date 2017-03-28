@@ -112,13 +112,17 @@ class Extractor:
 			[self.lemmas[word.LEMMA] for word in sent]
 	
 	
-	def get_lemma_vocab_size(self):
+	def get_vocab_sizes(self):
 		"""
-		Returns the number of lemma IDs, i.e. the number of lemmas found during
-		reading + 1 (for the unrecognised lemmas ID). This is used in building
-		the embeddings layer of the neural network.
+		Returns a {} containing: (1) the number of lemma IDs, i.e. the number
+		of lemmas found during reading + 1 (for the unrecognised lemmas ID);
+		(2) the number of POS tags.
+		
+		These are used for building the embedding layers of the neural network.
 		"""
-		return len(self.lemmas)
+		return {
+			'lemmas': len(self.lemmas),
+			'pos_tags': len(self.POS_TAGS)}
 	
 	
 	def featurise_lemma(self, lemma):
@@ -134,19 +138,13 @@ class Extractor:
 	
 	def featurise_pos_tag(self, pos_tag):
 		"""
-		Returns the feature vector for the given POS tag. Raises a FeatureError
-		if the given string is not a universal POS tag or 'ROOT'.
-		
-		The vector is a numpy array of zeroes and a single 1, the latter being
-		at the index in POS_TAGS that corresponds to the given tag.
+		Returns an integer uniquely identifying the given POS tag. Raises a
+		FeatureError if the given string is not a universal POS tag or 'ROOT'.
 		"""
 		try:
-			vector = [0] * len(self.POS_TAGS)
-			vector[self.POS_TAGS.index(pos_tag)] = 1
+			return self.POS_TAGS.index(pos_tag)
 		except ValueError:
 			raise FeatureError('Unknown POS tag: {}'.format(pos_tag))
-		
-		return np.array(vector)
 	
 	
 	def featurise_dep_rel(self, dep_rel):

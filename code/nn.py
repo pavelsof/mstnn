@@ -9,7 +9,7 @@ import numpy as np
 
 class NeuralNetwork:
 	
-	def __init__(self, model=None, vocab_size=None):
+	def __init__(self, model=None, vocab_sizes=None):
 		"""
 		Constructor. The first keyword argument should be a Keras model. If not
 		specified, a new model is created and compiled. In any case, the Keras
@@ -19,8 +19,9 @@ class NeuralNetwork:
 		are ignored otherwise).
 		"""
 		if model is None:
-			assert isinstance(vocab_size, int)
-			self._init_model(vocab_size)
+			assert isinstance(vocab_sizes['lemmas'], int)
+			assert isinstance(vocab_sizes['pos_tags'], int)
+			self._init_model(vocab_sizes)
 		else:
 			self.model = model
 	
@@ -50,23 +51,32 @@ class NeuralNetwork:
 		self.model.save(model_fp, overwrite=True)
 	
 	
-	def _init_model(self, vocab_size):
+	def _init_model(self, vocab_sizes):
 		"""
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network consists of three input branches, one handling the edges'
-		POS tags and morphological features, another handling the lemmas
-		embeddings, and a third handling the relative positions of the input
-		nodes. These branches then are concatenated and go through a standard
-		two-layer perceptron.
+		The network consists of four input branches, one handling the edges'
+		POS tags, another handling the morphological features, a third handling
+		the lemmas embeddings, and a fourth handling the relative positions of
+		the input nodes. These branches then are concatenated and go through a
+		standard two-layer perceptron.
 		"""
-		grammar_vec = Input(shape=(244,))
-		grammar = Dense(128, init='he_uniform', activation='relu')(grammar_vec)
+		pos_tag_a = Input(shape=(1,), dtype='int32')
+		pos_tag_b = Input(shape=(1,), dtype='int32')
+		pos_tag_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
+		pos_tags = merge([
+			Flatten()(pos_tag_embed(pos_tag_a)),
+			Flatten()(pos_tag_embed(pos_tag_b))], mode='concat')
+		
+		feats_a = Input(shape=(104,))
+		feats_b = Input(shape=(104,))
+		feats = merge([feats_a, feats_b], mode='concat')
+		feats = Dense(64, init='uniform', activation='relu')(feats)
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
-		lemma_embed = Embedding(vocab_size, 256, input_length=1)
+		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
@@ -74,13 +84,13 @@ class NeuralNetwork:
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
-		x = merge([grammar, lemmas, rel_pos], mode='concat')
+		x = merge([pos_tags, feats, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
-		self.model = Model(input=[
-			grammar_vec, lemma_a, lemma_b, rel_pos_raw], output=output)
+		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
+			lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
@@ -92,7 +102,10 @@ class NeuralNetwork:
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
 		"""
-		grammar = []
+		pos_tag_a = []
+		pos_tag_b = []
+		feats_a = []
+		feats_b = []
 		lemmas_a = []
 		lemmas_b = []
 		rel_pos = []
@@ -102,21 +115,31 @@ class NeuralNetwork:
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
 			for a, b in itertools.permutations(graph.nodes(), 2):
-				grammar.append(extractor.featurise_edge(graph, (a, b)))
+				pos_tag_a.append(extractor.featurise_pos_tag(graph.node[a]['UPOSTAG']))
+				pos_tag_b.append(extractor.featurise_pos_tag(graph.node[b]['UPOSTAG']))
+				
+				feats_a.append(extractor.featurise_morph(graph.node[a]['FEATS']))
+				feats_b.append(extractor.featurise_morph(graph.node[b]['FEATS']))
+				
 				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
 				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
+				
 				rel_pos.append(b - a)
 				
 				targets.append((a, b) in edges)
 		
-		grammar = np.array(grammar)
+		pos_tag_a = np.array(pos_tag_a)
+		pos_tag_b = np.array(pos_tag_b)
+		feats_a = np.array(feats_a)
+		feats_b = np.array(feats_b)
 		lemmas_a = np.array(lemmas_a)
 		lemmas_b = np.array(lemmas_b)
 		rel_pos = np.array(rel_pos)
 		targets = np.array(targets)
 		
-		self.model.fit([grammar, lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=16, nb_epoch=epochs, shuffle=True)
+		self.model.fit([pos_tag_a, pos_tag_b, feats_a, feats_b,
+				lemmas_a, lemmas_b, rel_pos],
+				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
@@ -125,23 +148,36 @@ class NeuralNetwork:
 		"""
 		scores = {}
 		
-		grammar = []
+		pos_tag_a = []
+		pos_tag_b = []
+		feats_a = []
+		feats_b = []
 		lemmas_a = []
 		lemmas_b = []
 		rel_pos = []
 		
 		for a, b in itertools.permutations(graph.nodes(), 2):
-			grammar.append(extractor.featurise_edge(graph, (a, b)))
+			pos_tag_a.append(extractor.featurise_pos_tag(graph.node[a]['UPOSTAG']))
+			pos_tag_b.append(extractor.featurise_pos_tag(graph.node[b]['UPOSTAG']))
+			
+			feats_a.append(extractor.featurise_morph(graph.node[a]['FEATS']))
+			feats_b.append(extractor.featurise_morph(graph.node[b]['FEATS']))
+			
 			lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
 			lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
+			
 			rel_pos.append(b - a)
 		
-		grammar = np.array(grammar)
+		pos_tag_a = np.array(pos_tag_a)
+		pos_tag_b = np.array(pos_tag_b)
+		feats_a = np.array(feats_a)
+		feats_b = np.array(feats_b)
 		lemmas_a = np.array(lemmas_a)
 		lemmas_b = np.array(lemmas_b)
 		rel_pos = np.array(rel_pos)
 		
-		probs = self.model.predict([grammar, lemmas_a, lemmas_b, rel_pos], verbose=1)
+		probs = self.model.predict([pos_tag_a, pos_tag_b, feats_a, feats_b,
+				lemmas_a, lemmas_b, rel_pos], verbose=1)
 		
 		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][0]

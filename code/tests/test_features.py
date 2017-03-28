@@ -44,7 +44,7 @@ class FeaturesTestCase(TestCase):
 		for lemma in lemmas:
 			extractor.lemmas[lemma]
 		
-		self.assertEqual(extractor.get_lemma_vocab_size(), len(lemmas)+2)
+		self.assertEqual(extractor.get_vocab_sizes()['lemmas'], len(lemmas)+2)
 		
 		self.assertEqual(extractor.featurise_lemma('_'), 0)
 		self.assertEqual(extractor.featurise_lemma('__root__'), 1)
@@ -57,9 +57,8 @@ class FeaturesTestCase(TestCase):
 	@given(sampled_from(POS_TAGS))
 	def test_featurise_pos_tag(self, pos_tag):
 		res = self.ext.featurise_pos_tag(pos_tag)
-		self.assertTrue(isinstance(res, np.ndarray))
-		self.assertEqual(len(res), len(POS_TAGS))
-		self.assertTrue(all([i == 0 or i == 1 for i in res]))
+		self.assertTrue(isinstance(res, int))
+		self.assertTrue(res < len(POS_TAGS))
 	
 	
 	@given(sampled_from(DEP_RELS))

@@ -30,6 +30,7 @@ class Cli:
 		
 		self._init_train()
 		self._init_parse()
+		self._init_diff()
 		self._init_unittest()
 	
 	
@@ -115,6 +116,28 @@ class Cli:
 			'dotted name of the module to test; '
 			'if omitted, run all tests'))
 		subp.set_defaults(func=unit_test)
+	
+	
+	def _init_diff(self):
+		"""
+		Inits the subparser that handles the diff command. The latter expects
+		two conllu files and prints a (hopefully) useful report about the
+		differences in the parses that have such (i.e. parses that are the same
+		are skipped).
+		"""
+		def _diff(args):
+			from code.diff import diff
+			diff(args.file1, args.file2)
+		
+		description = 'print the differences between two conllu files'
+		
+		subp = self.subparsers.add_parser('diff',
+			description=description, help=description)
+		
+		subp.add_argument('file1', help=('path to a conllu file'))
+		subp.add_argument('file2', help=('path to another conllu file'))
+		
+		subp.set_defaults(func=_diff)
 	
 	
 	def run(self, raw_args=None):
