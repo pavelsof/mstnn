@@ -139,7 +139,7 @@ class NeuralNetwork:
 		
 		self.model.fit([pos_tag_a, pos_tag_b, feats_a, feats_b,
 				lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+				targets, batch_size=128, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
