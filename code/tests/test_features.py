@@ -58,7 +58,8 @@ class FeaturesTestCase(TestCase):
 	def test_featurise_pos_tag(self, pos_tag):
 		res = self.ext.featurise_pos_tag(pos_tag)
 		self.assertTrue(isinstance(res, int))
-		self.assertTrue(res < len(POS_TAGS))
+		self.assertTrue(res > 0)
+		self.assertTrue(res <= len(POS_TAGS))
 	
 	
 	@given(sampled_from(DEP_RELS))

@@ -138,11 +138,12 @@ class Extractor:
 	
 	def featurise_pos_tag(self, pos_tag):
 		"""
-		Returns an integer uniquely identifying the given POS tag. Raises a
-		FeatureError if the given string is not a universal POS tag or 'ROOT'.
+		Returns a positive integer uniquely identifying the POS tag. Raises a
+		FeatureError if the given string is neither a valid universal POS tag
+		nor 'ROOT'.
 		"""
 		try:
-			return self.POS_TAGS.index(pos_tag)
+			return self.POS_TAGS.index(pos_tag) + 1
 		except ValueError:
 			raise FeatureError('Unknown POS tag: {}'.format(pos_tag))
 	
@@ -203,20 +204,33 @@ class Extractor:
 	
 	def featurise_edge(self, graph, edge):
 		"""
-		Returns the feature vector for the edge in the given graph that is
-		defined by the given nodes tuple. Non-edges can also be featurised.
+		Returns the feature vector for the edge (defined by the given tuple) in
+		the given graph. Non-edges can also be featurised.
 		
-		The return value is a numpy array that is the result of concatenating
-		the parent and child's POS tag and morphology feature vectors.
+		The return value is a [] consisting of: (1) the featurised POS tags of
+		the nodes and their immediate neighbours; (2) the featurised nodes'
+		morphological features; (3) the featurised nodes' lemmas.
 		"""
-		parent = graph.node[edge[0]]
-		child = graph.node[edge[1]]
+		a, b = edge
 		
-		return np.concatenate([
-			self.featurise_pos_tag(parent['UPOSTAG']),
-			self.featurise_morph(parent['FEATS']),
-			self.featurise_pos_tag(child['UPOSTAG']),
-			self.featurise_morph(child['FEATS'])])
+		tag_a_prev = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
+		tag_a = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
+		tag_a_next = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
+		
+		tag_b_prev = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
+		tag_b = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
+		tag_b_next = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
+		
+		morph_a = self.featurise_morph(graph.node[a]['FEATS'])
+		morph_b = self.featurise_morph(graph.node[b]['FEATS'])
+		
+		lemma_a = self.featurise_lemma(graph.node[a]['LEMMA'])
+		lemma_b = self.featurise_lemma(graph.node[b]['LEMMA'])
+		
+		return [
+			tag_a_prev, tag_a, tag_a_next,
+			tag_b_prev, tag_b, tag_b_next,
+			morph_a, morph_b, lemma_a, lemma_b]
 	
 	
 	def featurise_graph(self, graph):

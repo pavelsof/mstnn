@@ -56,18 +56,27 @@ class NeuralNetwork:
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network consists of four input branches, one handling the edges'
-		POS tags, another handling the morphological features, a third handling
-		the lemmas embeddings, and a fourth handling the relative positions of
-		the input nodes. These branches then are concatenated and go through a
-		standard two-layer perceptron.
+		The network takes as input the POS tags, the morphological features and
+		the lemmas of two nodes and their immediate neighbours (the context),
+		as well as their relative position to each other, and produces the
+		probability of an edge between these two nodes.
 		"""
 		pos_tag_a = Input(shape=(1,), dtype='int32')
+		pos_tag_a_prev = Input(shape=(1,), dtype='int32')
+		pos_tag_a_next = Input(shape=(1,), dtype='int32')
+		
 		pos_tag_b = Input(shape=(1,), dtype='int32')
+		pos_tag_b_prev = Input(shape=(1,), dtype='int32')
+		pos_tag_b_next = Input(shape=(1,), dtype='int32')
+		
 		pos_tag_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
 		pos_tags = merge([
+			Flatten()(pos_tag_embed(pos_tag_a_prev)),
 			Flatten()(pos_tag_embed(pos_tag_a)),
-			Flatten()(pos_tag_embed(pos_tag_b))], mode='concat')
+			Flatten()(pos_tag_embed(pos_tag_a_next)),
+			Flatten()(pos_tag_embed(pos_tag_b_prev)),
+			Flatten()(pos_tag_embed(pos_tag_b)),
+			Flatten()(pos_tag_embed(pos_tag_b_next))], mode='concat')
 		
 		feats_a = Input(shape=(104,))
 		feats_b = Input(shape=(104,))
@@ -89,8 +98,10 @@ class NeuralNetwork:
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
-		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+		self.model = Model(input=[
+			pos_tag_a_prev, pos_tag_a, pos_tag_a_next,
+			pos_tag_b_prev, pos_tag_b, pos_tag_b_next,
+			feats_a, feats_b, lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
@@ -102,12 +113,20 @@ class NeuralNetwork:
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
 		"""
+		pos_tag_a_prev = []
 		pos_tag_a = []
+		pos_tag_a_next = []
+		
+		pos_tag_b_prev = []
 		pos_tag_b = []
+		pos_tag_b_next = []
+		
 		feats_a = []
 		feats_b = []
+		
 		lemmas_a = []
 		lemmas_b = []
+		
 		rel_pos = []
 		
 		targets = []
@@ -115,31 +134,49 @@ class NeuralNetwork:
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
 			for a, b in itertools.permutations(graph.nodes(), 2):
-				pos_tag_a.append(extractor.featurise_pos_tag(graph.node[a]['UPOSTAG']))
-				pos_tag_b.append(extractor.featurise_pos_tag(graph.node[b]['UPOSTAG']))
+				vec = extractor.featurise_edge(graph, (a, b))
 				
-				feats_a.append(extractor.featurise_morph(graph.node[a]['FEATS']))
-				feats_b.append(extractor.featurise_morph(graph.node[b]['FEATS']))
+				pos_tag_a_prev.append(vec[0])
+				pos_tag_a.append(vec[1])
+				pos_tag_a_next.append(vec[2])
 				
-				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
-				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
+				pos_tag_b_prev.append(vec[3])
+				pos_tag_b.append(vec[4])
+				pos_tag_b_next.append(vec[5])
+				
+				feats_a.append(vec[6])
+				feats_b.append(vec[7])
+				
+				lemmas_a.append(vec[8])
+				lemmas_b.append(vec[9])
 				
 				rel_pos.append(b - a)
 				
 				targets.append((a, b) in edges)
 		
+		pos_tag_a_prev = np.array(pos_tag_a_prev)
 		pos_tag_a = np.array(pos_tag_a)
+		pos_tag_a_next = np.array(pos_tag_a_next)
+		
+		pos_tag_b_prev = np.array(pos_tag_b_prev)
 		pos_tag_b = np.array(pos_tag_b)
+		pos_tag_b_next = np.array(pos_tag_b_next)
+		
 		feats_a = np.array(feats_a)
 		feats_b = np.array(feats_b)
+		
 		lemmas_a = np.array(lemmas_a)
 		lemmas_b = np.array(lemmas_b)
+		
 		rel_pos = np.array(rel_pos)
+		
 		targets = np.array(targets)
 		
-		self.model.fit([pos_tag_a, pos_tag_b, feats_a, feats_b,
-				lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+		self.model.fit([
+				pos_tag_a_prev, pos_tag_a, pos_tag_a_next,
+				pos_tag_b_prev, pos_tag_b, pos_tag_b_next,
+				feats_a, feats_b, lemmas_a, lemmas_b, rel_pos],
+			targets, batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
@@ -148,36 +185,61 @@ class NeuralNetwork:
 		"""
 		scores = {}
 		
+		pos_tag_a_prev = []
 		pos_tag_a = []
+		pos_tag_a_next = []
+		
+		pos_tag_b_prev = []
 		pos_tag_b = []
+		pos_tag_b_next = []
+		
 		feats_a = []
 		feats_b = []
+		
 		lemmas_a = []
 		lemmas_b = []
+		
 		rel_pos = []
 		
 		for a, b in itertools.permutations(graph.nodes(), 2):
-			pos_tag_a.append(extractor.featurise_pos_tag(graph.node[a]['UPOSTAG']))
-			pos_tag_b.append(extractor.featurise_pos_tag(graph.node[b]['UPOSTAG']))
+			vec = extractor.featurise_edge(graph, (a, b))
 			
-			feats_a.append(extractor.featurise_morph(graph.node[a]['FEATS']))
-			feats_b.append(extractor.featurise_morph(graph.node[b]['FEATS']))
+			pos_tag_a_prev.append(vec[0])
+			pos_tag_a.append(vec[1])
+			pos_tag_a_next.append(vec[2])
 			
-			lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
-			lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
+			pos_tag_b_prev.append(vec[3])
+			pos_tag_b.append(vec[4])
+			pos_tag_b_next.append(vec[5])
+			
+			feats_a.append(vec[6])
+			feats_b.append(vec[7])
+			
+			lemmas_a.append(vec[8])
+			lemmas_b.append(vec[9])
 			
 			rel_pos.append(b - a)
 		
+		pos_tag_a_prev = np.array(pos_tag_a_prev)
 		pos_tag_a = np.array(pos_tag_a)
+		pos_tag_a_next = np.array(pos_tag_a_next)
+		
+		pos_tag_b_prev = np.array(pos_tag_b_prev)
 		pos_tag_b = np.array(pos_tag_b)
+		pos_tag_b_next = np.array(pos_tag_b_next)
+		
 		feats_a = np.array(feats_a)
 		feats_b = np.array(feats_b)
+		
 		lemmas_a = np.array(lemmas_a)
 		lemmas_b = np.array(lemmas_b)
+		
 		rel_pos = np.array(rel_pos)
 		
-		probs = self.model.predict([pos_tag_a, pos_tag_b, feats_a, feats_b,
-				lemmas_a, lemmas_b, rel_pos], verbose=1)
+		probs = self.model.predict([
+			pos_tag_a_prev, pos_tag_a, pos_tag_a_next,
+			pos_tag_b_prev, pos_tag_b, pos_tag_b_next,
+			feats_a, feats_b, lemmas_a, lemmas_b, rel_pos], verbose=1)
 		
 		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][0]
