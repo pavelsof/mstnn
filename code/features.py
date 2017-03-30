@@ -116,13 +116,13 @@ class Extractor:
 		"""
 		Returns a {} containing: (1) the number of lemma IDs, i.e. the number
 		of lemmas found during reading + 1 (for the unrecognised lemmas ID);
-		(2) the number of POS tags.
+		(2) the number of POS tags + 1 (for the tags of the padding).
 		
 		These are used for building the embedding layers of the neural network.
 		"""
 		return {
 			'lemmas': len(self.lemmas),
-			'pos_tags': len(self.POS_TAGS)}
+			'pos_tags': len(self.POS_TAGS) + 1}
 	
 	
 	def featurise_lemma(self, lemma):
