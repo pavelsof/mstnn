@@ -18,7 +18,9 @@ EDGE_FEATURES = tuple([
 	'pos_b_prev', 'pos_b', 'pos_b_next',
 	'morph_a_prev', 'morph_a', 'morph_a_next',
 	'morph_b_prev', 'morph_b', 'morph_b_next',
-	'lemma_a', 'lemma_b', 'rel_pos'])
+	'lemma_a_prev', 'lemma_a', 'lemma_a_next',
+	'lemma_b_prev', 'lemma_b', 'lemma_b_next',
+	'rel_pos'])
 
 
 
@@ -107,11 +109,21 @@ class NeuralNetwork:
 		morph = Dense(64, init='uniform', activation='relu')(morph)
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
+		lemma_a_prev = Input(shape=(1,), dtype='int32')
+		lemma_a_next = Input(shape=(1,), dtype='int32')
+		
 		lemma_b = Input(shape=(1,), dtype='int32')
+		lemma_b_prev = Input(shape=(1,), dtype='int32')
+		lemma_b_next = Input(shape=(1,), dtype='int32')
+		
 		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
 		lemmas = merge([
+			Flatten()(lemma_embed(lemma_a_prev)),
 			Flatten()(lemma_embed(lemma_a)),
-			Flatten()(lemma_embed(lemma_b))], mode='concat')
+			Flatten()(lemma_embed(lemma_a_next)),
+			Flatten()(lemma_embed(lemma_b_prev)),
+			Flatten()(lemma_embed(lemma_b)),
+			Flatten()(lemma_embed(lemma_b_next))], mode='concat')
 		
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
@@ -126,7 +138,9 @@ class NeuralNetwork:
 			pos_b_prev, pos_b, pos_b_next,
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+			lemma_a_prev, lemma_a, lemma_a_next,
+			lemma_b_prev, lemma_b, lemma_b_next,
+			rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
