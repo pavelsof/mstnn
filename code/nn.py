@@ -16,7 +16,9 @@ Used in the train and calc_probs methods of the NeuralNetwork class below.
 EDGE_FEATURES = tuple([
 	'pos_a_prev', 'pos_a', 'pos_a_next',
 	'pos_b_prev', 'pos_b', 'pos_b_next',
-	'morph_a', 'morph_b', 'lemma_a', 'lemma_b', 'rel_pos'])
+	'morph_a_prev', 'morph_a', 'morph_a_next',
+	'morph_b_prev', 'morph_b', 'morph_b_next',
+	'lemma_a', 'lemma_b', 'rel_pos'])
 
 
 
@@ -74,27 +76,35 @@ class NeuralNetwork:
 		as well as their relative position to each other, and produces the
 		probability of an edge between these two nodes.
 		"""
-		pos_tag_a = Input(shape=(1,), dtype='int32')
-		pos_tag_a_prev = Input(shape=(1,), dtype='int32')
-		pos_tag_a_next = Input(shape=(1,), dtype='int32')
+		pos_a = Input(shape=(1,), dtype='int32')
+		pos_a_prev = Input(shape=(1,), dtype='int32')
+		pos_a_next = Input(shape=(1,), dtype='int32')
 		
-		pos_tag_b = Input(shape=(1,), dtype='int32')
-		pos_tag_b_prev = Input(shape=(1,), dtype='int32')
-		pos_tag_b_next = Input(shape=(1,), dtype='int32')
+		pos_b = Input(shape=(1,), dtype='int32')
+		pos_b_prev = Input(shape=(1,), dtype='int32')
+		pos_b_next = Input(shape=(1,), dtype='int32')
 		
-		pos_tag_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
-		pos_tags = merge([
-			Flatten()(pos_tag_embed(pos_tag_a_prev)),
-			Flatten()(pos_tag_embed(pos_tag_a)),
-			Flatten()(pos_tag_embed(pos_tag_a_next)),
-			Flatten()(pos_tag_embed(pos_tag_b_prev)),
-			Flatten()(pos_tag_embed(pos_tag_b)),
-			Flatten()(pos_tag_embed(pos_tag_b_next))], mode='concat')
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
+		pos = merge([
+			Flatten()(pos_embed(pos_a_prev)),
+			Flatten()(pos_embed(pos_a)),
+			Flatten()(pos_embed(pos_a_next)),
+			Flatten()(pos_embed(pos_b_prev)),
+			Flatten()(pos_embed(pos_b)),
+			Flatten()(pos_embed(pos_b_next))], mode='concat')
 		
-		feats_a = Input(shape=(104,))
-		feats_b = Input(shape=(104,))
-		feats = merge([feats_a, feats_b], mode='concat')
-		feats = Dense(64, init='uniform', activation='relu')(feats)
+		morph_a = Input(shape=(104,))
+		morph_a_prev = Input(shape=(104,))
+		morph_a_next = Input(shape=(104,))
+		
+		morph_b = Input(shape=(104,))
+		morph_b_prev = Input(shape=(104,))
+		morph_b_next = Input(shape=(104,))
+		
+		morph = merge([
+			morph_a_prev, morph_a, morph_a_next,
+			morph_b_prev, morph_b, morph_b_next], mode='concat')
+		morph = Dense(64, init='uniform', activation='relu')(morph)
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_b = Input(shape=(1,), dtype='int32')
@@ -106,15 +116,17 @@ class NeuralNetwork:
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
-		x = merge([pos_tags, feats, lemmas, rel_pos], mode='concat')
+		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			pos_tag_a_prev, pos_tag_a, pos_tag_a_next,
-			pos_tag_b_prev, pos_tag_b, pos_tag_b_next,
-			feats_a, feats_b, lemma_a, lemma_b, rel_pos_raw], output=output)
+			pos_a_prev, pos_a, pos_a_next,
+			pos_b_prev, pos_b, pos_b_next,
+			morph_a_prev, morph_a, morph_a_next,
+			morph_b_prev, morph_b, morph_b_next,
+			lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',

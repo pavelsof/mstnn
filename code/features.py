@@ -220,8 +220,13 @@ class Extractor:
 		d['pos_b'] = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
 		d['pos_b_next'] = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
 		
+		d['morph_a_prev'] = self.featurise_morph('_' if a-1 < 0 else graph.node[a-1]['FEATS'])
 		d['morph_a'] = self.featurise_morph(graph.node[a]['FEATS'])
+		d['morph_a_next'] = self.featurise_morph('_' if a+1 >= len(graph) else graph.node[a+1]['FEATS'])
+		
+		d['morph_b_prev'] = self.featurise_morph('_' if b-1 < 0 else graph.node[b-1]['FEATS'])
 		d['morph_b'] = self.featurise_morph(graph.node[b]['FEATS'])
+		d['morph_b_next'] = self.featurise_morph('_' if b+1 >= len(graph) else graph.node[b+1]['FEATS'])
 		
 		d['lemma_a'] = self.featurise_lemma(graph.node[a]['LEMMA'])
 		d['lemma_b'] = self.featurise_lemma(graph.node[b]['LEMMA'])
