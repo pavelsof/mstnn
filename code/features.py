@@ -9,7 +9,6 @@ import json
 
 import h5py
 
-import networkx as nx
 import numpy as np
 
 from code import ud
@@ -204,61 +203,29 @@ class Extractor:
 	
 	def featurise_edge(self, graph, edge):
 		"""
-		Returns the feature vector for the edge (defined by the given tuple) in
-		the given graph. Non-edges can also be featurised.
+		Returns the features for the edge (defined by the given tuple) in the
+		given graph. Non-edges can also be featurised.
 		
-		The return value is a [] consisting of: (1) the featurised POS tags of
-		the nodes and their immediate neighbours; (2) the featurised nodes'
-		morphological features; (3) the featurised nodes' lemmas.
+		The return value is a dict the keys of which should be the same as the
+		ones listed in code.nn.EDGE_FEATURES.
 		"""
 		a, b = edge
+		d = {}
 		
-		tag_a_prev = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
-		tag_a = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
-		tag_a_next = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
+		d['pos_a_prev'] = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
+		d['pos_a'] = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
+		d['pos_a_next'] = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
 		
-		tag_b_prev = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
-		tag_b = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
-		tag_b_next = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
+		d['pos_b_prev'] = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
+		d['pos_b'] = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
+		d['pos_b_next'] = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
 		
-		morph_a = self.featurise_morph(graph.node[a]['FEATS'])
-		morph_b = self.featurise_morph(graph.node[b]['FEATS'])
+		d['morph_a'] = self.featurise_morph(graph.node[a]['FEATS'])
+		d['morph_b'] = self.featurise_morph(graph.node[b]['FEATS'])
 		
-		lemma_a = self.featurise_lemma(graph.node[a]['LEMMA'])
-		lemma_b = self.featurise_lemma(graph.node[b]['LEMMA'])
+		d['lemma_a'] = self.featurise_lemma(graph.node[a]['LEMMA'])
+		d['lemma_b'] = self.featurise_lemma(graph.node[b]['LEMMA'])
 		
-		return [
-			tag_a_prev, tag_a, tag_a_next,
-			tag_b_prev, tag_b, tag_b_next,
-			morph_a, morph_b, lemma_a, lemma_b]
-	
-	
-	def featurise_graph(self, graph):
-		"""
-		Returns the 3D feature matrix extracted from the given nx.DiGraph
-		instance. The latter is expected to be of the type that
-		conllu.Dataset.gen_graphs() produces.
+		d['rel_pos'] = b - a
 		
-		The matrix has the width and height equal to the number of words in the
-		sentence (including the imaginary root word). The depth consists of (1)
-		the adjacency 2D matrix, (2) the POS tag feature vectors, and (3) the
-		morphology feature vectors, stacked in this order.
-		
-		The return value itself is a numpy array of shape (depth, height,
-		width).
-		"""
-		num_nodes = graph.number_of_nodes()
-		
-		adj_mat = np.expand_dims(nx.adjacency_matrix(graph).todense(), axis=0)
-		
-		pos_mat = np.array([self.featurise_pos_tag(graph.node[node]['UPOSTAG'])
-			for node in range(num_nodes)])
-		pos_mat = np.tile(pos_mat, (num_nodes, 1, 1))
-		pos_mat = np.swapaxes(np.swapaxes(pos_mat, 0, 2), 1, 2)
-		
-		morph_mat = np.array([self.featurise_morph(graph.node[node]['FEATS'])
-			for node in range(num_nodes)])
-		morph_mat = np.tile(morph_mat, (num_nodes, 1, 1))
-		morph_mat = np.swapaxes(np.swapaxes(morph_mat, 0, 2), 1, 2)
-		
-		return np.concatenate((adj_mat, pos_mat, morph_mat), axis=0)
+		return d

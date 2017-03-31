@@ -7,6 +7,19 @@ import numpy as np
 
 
 
+"""
+Tuple listing the names of the features that are fed into the network for each
+edge of each sentence graph.
+
+Used in the train and calc_probs methods of the NeuralNetwork class below.
+"""
+EDGE_FEATURES = tuple([
+	'pos_a_prev', 'pos_a', 'pos_a_next',
+	'pos_b_prev', 'pos_b', 'pos_b_next',
+	'morph_a', 'morph_b', 'lemma_a', 'lemma_b', 'rel_pos'])
+
+
+
 class NeuralNetwork:
 	
 	def __init__(self, model=None, vocab_sizes=None):
@@ -113,133 +126,38 @@ class NeuralNetwork:
 		Expects a conllu.Dataset instance to train on and a features.Extractor
 		instance to extract the feature vectors with.
 		"""
-		pos_tag_a_prev = []
-		pos_tag_a = []
-		pos_tag_a_next = []
-		
-		pos_tag_b_prev = []
-		pos_tag_b = []
-		pos_tag_b_next = []
-		
-		feats_a = []
-		feats_b = []
-		
-		lemmas_a = []
-		lemmas_b = []
-		
-		rel_pos = []
-		
+		feats = {key: [] for key in EDGE_FEATURES}
 		targets = []
 		
 		for graph in dataset.gen_graphs():
 			edges = graph.edges()
+			
 			for a, b in itertools.permutations(graph.nodes(), 2):
-				vec = extractor.featurise_edge(graph, (a, b))
-				
-				pos_tag_a_prev.append(vec[0])
-				pos_tag_a.append(vec[1])
-				pos_tag_a_next.append(vec[2])
-				
-				pos_tag_b_prev.append(vec[3])
-				pos_tag_b.append(vec[4])
-				pos_tag_b_next.append(vec[5])
-				
-				feats_a.append(vec[6])
-				feats_b.append(vec[7])
-				
-				lemmas_a.append(vec[8])
-				lemmas_b.append(vec[9])
-				
-				rel_pos.append(b - a)
+				d = extractor.featurise_edge(graph, (a, b))
+				for key, value in d.items():
+					feats[key].append(value)
 				
 				targets.append((a, b) in edges)
 		
-		pos_tag_a_prev = np.array(pos_tag_a_prev)
-		pos_tag_a = np.array(pos_tag_a)
-		pos_tag_a_next = np.array(pos_tag_a_next)
-		
-		pos_tag_b_prev = np.array(pos_tag_b_prev)
-		pos_tag_b = np.array(pos_tag_b)
-		pos_tag_b_next = np.array(pos_tag_b_next)
-		
-		feats_a = np.array(feats_a)
-		feats_b = np.array(feats_b)
-		
-		lemmas_a = np.array(lemmas_a)
-		lemmas_b = np.array(lemmas_b)
-		
-		rel_pos = np.array(rel_pos)
-		
-		targets = np.array(targets)
-		
-		self.model.fit([
-				pos_tag_a_prev, pos_tag_a, pos_tag_a_next,
-				pos_tag_b_prev, pos_tag_b, pos_tag_b_next,
-				feats_a, feats_b, lemmas_a, lemmas_b, rel_pos],
-			targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+		self.model.fit([np.array(feats[key]) for key in EDGE_FEATURES],
+			np.array(targets), batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
 	def calc_probs(self, graph, extractor):
 		"""
 		Calculates the probabilities of each edge.
 		"""
-		scores = {}
-		
-		pos_tag_a_prev = []
-		pos_tag_a = []
-		pos_tag_a_next = []
-		
-		pos_tag_b_prev = []
-		pos_tag_b = []
-		pos_tag_b_next = []
-		
-		feats_a = []
-		feats_b = []
-		
-		lemmas_a = []
-		lemmas_b = []
-		
-		rel_pos = []
+		feats = {key: [] for key in EDGE_FEATURES}
 		
 		for a, b in itertools.permutations(graph.nodes(), 2):
-			vec = extractor.featurise_edge(graph, (a, b))
-			
-			pos_tag_a_prev.append(vec[0])
-			pos_tag_a.append(vec[1])
-			pos_tag_a_next.append(vec[2])
-			
-			pos_tag_b_prev.append(vec[3])
-			pos_tag_b.append(vec[4])
-			pos_tag_b_next.append(vec[5])
-			
-			feats_a.append(vec[6])
-			feats_b.append(vec[7])
-			
-			lemmas_a.append(vec[8])
-			lemmas_b.append(vec[9])
-			
-			rel_pos.append(b - a)
+			d = extractor.featurise_edge(graph, (a, b))
+			for key, value in d.items():
+				feats[key].append(value)
 		
-		pos_tag_a_prev = np.array(pos_tag_a_prev)
-		pos_tag_a = np.array(pos_tag_a)
-		pos_tag_a_next = np.array(pos_tag_a_next)
+		feats = [np.array(feats[key]) for key in EDGE_FEATURES]
+		probs = self.model.predict(feats, verbose=1)
 		
-		pos_tag_b_prev = np.array(pos_tag_b_prev)
-		pos_tag_b = np.array(pos_tag_b)
-		pos_tag_b_next = np.array(pos_tag_b_next)
-		
-		feats_a = np.array(feats_a)
-		feats_b = np.array(feats_b)
-		
-		lemmas_a = np.array(lemmas_a)
-		lemmas_b = np.array(lemmas_b)
-		
-		rel_pos = np.array(rel_pos)
-		
-		probs = self.model.predict([
-			pos_tag_a_prev, pos_tag_a, pos_tag_a_next,
-			pos_tag_b_prev, pos_tag_b, pos_tag_b_next,
-			feats_a, feats_b, lemmas_a, lemmas_b, rel_pos], verbose=1)
+		scores = {}
 		
 		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
 			scores[(a, b)] = probs[index][0]
