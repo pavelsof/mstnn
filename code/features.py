@@ -212,13 +212,17 @@ class Extractor:
 		a, b = edge
 		d = {}
 		
-		d['pos_a_prev'] = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
-		d['pos_a'] = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
-		d['pos_a_next'] = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
+		d['pos_a'] = [
+			0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG']),
+			self.featurise_pos_tag(graph.node[a]['UPOSTAG']),
+			0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
+		]
 		
-		d['pos_b_prev'] = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
-		d['pos_b'] = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
-		d['pos_b_next'] = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
+		d['pos_b'] = [
+			0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG']),
+			self.featurise_pos_tag(graph.node[b]['UPOSTAG']),
+			0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
+		]
 		
 		d['morph_a'] = self.featurise_morph(graph.node[a]['FEATS'])
 		d['morph_b'] = self.featurise_morph(graph.node[b]['FEATS'])
