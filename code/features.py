@@ -41,6 +41,9 @@ class Extractor:
 		that the features are extracted from. ID 0 is used for unrecognised
 		lemmas, hence the underscore. ID 1 is used for the non-standard root
 		node lemma (__root__).
+		
+		The morph dict works almost identically for the strings representing
+		the morphological feature sets.
 		"""
 		if ud_version == 1:
 			self.POS_TAGS = ud.POS_TAGS_V1
@@ -58,6 +61,9 @@ class Extractor:
 		self.lemmas = defaultdict(lambda: len(self.lemmas))
 		self.lemmas['_']
 		self.lemmas['__root__']
+		
+		self.morph = defaultdict(lambda: len(self.morph))
+		self.morph['_']
 	
 	
 	@classmethod
@@ -115,12 +121,14 @@ class Extractor:
 		"""
 		Returns a {} containing: (1) the number of lemma IDs, i.e. the number
 		of lemmas found during reading + 1 (for the unrecognised lemmas ID);
-		(2) the number of POS tags + 1 (for the tags of the padding).
+		(2) the number of morph IDs; (3) the number of POS tags + 1 (for the
+		tags of the padding).
 		
 		These are used for building the embedding layers of the neural network.
 		"""
 		return {
 			'lemmas': len(self.lemmas),
+			'morph': len(self.morph),
 			'pos_tags': len(self.POS_TAGS) + 1}
 	
 	
@@ -168,37 +176,20 @@ class Extractor:
 	
 	def featurise_morph(self, morph):
 		"""
-		Returns the feature vector corresponding to the given FEATS string.
-		Raises a FeatureError if the string does not conform to the rules.
+		Returns an integer uniquely identifying the given morphology features
+		string. If the given combination of morph features has not been found
+		during reading, returns 0.
 		
-		The vector is a numpy array of zeroes and ones with each element
-		representing a possible value of the MORPH_FEATURES ordered dict. E.g.
-		the output for "Animacy=Anim" should be a vector with its second
-		element 1 and all the other elements zeroes.
+		The empty string is not an allowed morph string, so a FeatureError is
+		raised if one is given.
 		"""
-		try:
-			morph = {
-				key: value.split(',')
-				for key, value in map(lambda x: x.split('='), morph.split('|'))}
-		except ValueError:
-			if morph == '_':
-				morph = {}
-			else:
-				raise FeatureError('Bad FEATS format: {}'.format(morph))
+		if not morph:
+			raise FeatureError('Bad morph: empty string')
 		
-		vector = []
+		if morph not in self.morph:
+			return 0
 		
-		for feature, poss_values in self.MORPH_FEATURES.items():
-			small_vec = [0] * len(poss_values)
-			
-			if feature in morph:
-				for index, value in enumerate(poss_values):
-					if value in morph[feature]:
-						small_vec[index] = 1
-			
-			vector += small_vec
-		
-		return np.array(vector)
+		return self.morph[morph]
 	
 	
 	def featurise_edge(self, graph, edge):

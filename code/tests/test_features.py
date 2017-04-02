@@ -80,14 +80,8 @@ class FeaturesTestCase(TestCase):
 			string = '_'
 		
 		res = self.ext.featurise_morph(string)
-		
-		self.assertTrue(isinstance(res, np.ndarray))
-		self.assertEqual(len(res),
-			sum([len(value) for value in MORPH_FEATURES.values()]))
-		
-		self.assertTrue(all([i == 0 or i == 1 for i in res]))
-		self.assertEqual(len([i for i in res if i == 1]),
-			sum([len(value) for value in subdict.values()]))
+		self.assertTrue(isinstance(res, int))
+		self.assertTrue(res >= 0)
 	
 	
 	def test_feature_error(self):

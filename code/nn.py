@@ -95,18 +95,22 @@ class NeuralNetwork:
 			Flatten()(pos_embed(pos_b)),
 			Flatten()(pos_embed(pos_b_next))], mode='concat')
 		
-		morph_a = Input(shape=(104,))
-		morph_a_prev = Input(shape=(104,))
-		morph_a_next = Input(shape=(104,))
+		morph_a = Input(shape=(1,), dtype='int32')
+		morph_a_prev = Input(shape=(1,), dtype='int32')
+		morph_a_next = Input(shape=(1,), dtype='int32')
 		
-		morph_b = Input(shape=(104,))
-		morph_b_prev = Input(shape=(104,))
-		morph_b_next = Input(shape=(104,))
+		morph_b = Input(shape=(1,), dtype='int32')
+		morph_b_prev = Input(shape=(1,), dtype='int32')
+		morph_b_next = Input(shape=(1,), dtype='int32')
 		
+		morph_embed = Embedding(vocab_sizes['morph'], 32, input_length=1)
 		morph = merge([
-			morph_a_prev, morph_a, morph_a_next,
-			morph_b_prev, morph_b, morph_b_next], mode='concat')
-		morph = Dense(64, init='uniform', activation='relu')(morph)
+			Flatten()(morph_embed(morph_a_prev)),
+			Flatten()(morph_embed(morph_a)),
+			Flatten()(morph_embed(morph_a_next)),
+			Flatten()(morph_embed(morph_b_prev)),
+			Flatten()(morph_embed(morph_b)),
+			Flatten()(morph_embed(morph_b_next))], mode='concat')
 		
 		lemma_a = Input(shape=(1,), dtype='int32')
 		lemma_a_prev = Input(shape=(1,), dtype='int32')

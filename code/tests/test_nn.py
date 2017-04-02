@@ -10,7 +10,8 @@ from code.nn import NeuralNetwork
 class NeuralNetworkTestCase(TestCase):
 	
 	def setUp(self):
-		self.net = NeuralNetwork(vocab_sizes={'lemmas': 42, 'pos_tags': 18})
+		self.net = NeuralNetwork(vocab_sizes={
+			'lemmas': 42, 'morph': 42, 'pos_tags': 18})
 	
 	
 	def test_model_files_error(self):
