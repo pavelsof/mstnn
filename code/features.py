@@ -223,8 +223,13 @@ class Extractor:
 		d['morph_a'] = self.featurise_morph(graph.node[a]['FEATS'])
 		d['morph_b'] = self.featurise_morph(graph.node[b]['FEATS'])
 		
+		d['lemma_a_prev'] = 0 if a-1 < 0 else self.featurise_lemma(graph.node[a-1]['LEMMA'])
 		d['lemma_a'] = self.featurise_lemma(graph.node[a]['LEMMA'])
+		d['lemma_a_next'] = 0 if a+1 >= len(graph) else self.featurise_lemma(graph.node[a+1]['LEMMA'])
+		
+		d['lemma_b_prev'] = 0 if b-1 < 0 else self.featurise_lemma(graph.node[b-1]['LEMMA'])
 		d['lemma_b'] = self.featurise_lemma(graph.node[b]['LEMMA'])
+		d['lemma_b_next'] = 0 if b+1 >= len(graph) else self.featurise_lemma(graph.node[b+1]['LEMMA'])
 		
 		d['rel_pos'] = b - a
 		
