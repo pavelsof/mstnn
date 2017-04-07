@@ -215,25 +215,25 @@ class Extractor:
 		a, b = edge
 		d = {}
 		
-		d['pos_a_prev'] = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
-		d['pos_a'] = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
-		d['pos_a_next'] = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
+		d['pos A-1'] = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
+		d['pos A'] = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
+		d['pos A+1'] = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
 		
-		d['pos_b_prev'] = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
-		d['pos_b'] = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
-		d['pos_b_next'] = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
+		d['pos B-1'] = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
+		d['pos B'] = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
+		d['pos B+1'] = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
 		
-		d['morph_a_prev'] = self.featurise_morph('_' if a-1 < 0 else graph.node[a-1]['FEATS'])
-		d['morph_a'] = self.featurise_morph(graph.node[a]['FEATS'])
-		d['morph_a_next'] = self.featurise_morph('_' if a+1 >= len(graph) else graph.node[a+1]['FEATS'])
+		d['morph A-1'] = self.featurise_morph('_' if a-1 < 0 else graph.node[a-1]['FEATS'])
+		d['morph A'] = self.featurise_morph(graph.node[a]['FEATS'])
+		d['morph A+1'] = self.featurise_morph('_' if a+1 >= len(graph) else graph.node[a+1]['FEATS'])
 		
-		d['morph_b_prev'] = self.featurise_morph('_' if b-1 < 0 else graph.node[b-1]['FEATS'])
-		d['morph_b'] = self.featurise_morph(graph.node[b]['FEATS'])
-		d['morph_b_next'] = self.featurise_morph('_' if b+1 >= len(graph) else graph.node[b+1]['FEATS'])
+		d['morph B-1'] = self.featurise_morph('_' if b-1 < 0 else graph.node[b-1]['FEATS'])
+		d['morph B'] = self.featurise_morph(graph.node[b]['FEATS'])
+		d['morph B+1'] = self.featurise_morph('_' if b+1 >= len(graph) else graph.node[b+1]['FEATS'])
 		
-		d['lemma_a'] = self.featurise_lemma(graph.node[a]['LEMMA'])
-		d['lemma_b'] = self.featurise_lemma(graph.node[b]['LEMMA'])
+		d['lemma A'] = self.featurise_lemma(graph.node[a]['LEMMA'])
+		d['lemma B'] = self.featurise_lemma(graph.node[b]['LEMMA'])
 		
-		d['rel_pos'] = b - a
+		d['B-A'] = b - a
 		
 		return d
