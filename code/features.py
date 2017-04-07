@@ -113,14 +113,17 @@ class Extractor:
 	
 	def get_vocab_sizes(self):
 		"""
-		Returns a {} containing: (1) the number of lemma IDs, i.e. the number
+		Returns a {} containing: (*) the number of lemma IDs, i.e. the number
 		of lemmas found during reading + 1 (for the unrecognised lemmas ID);
-		(2) the number of POS tags + 1 (for the tags of the padding).
+		(*) the number of POS tags + 1 (for the tags of the padding); (*) the
+		size of the vectors returned by the featurise_morph method.
 		
-		These are used for building the embedding layers of the neural network.
+		These are used as parameters the POS and lemma embedding and the
+		morphology input layers of the neural network.
 		"""
 		return {
 			'lemmas': len(self.lemmas),
+			'morph': 135 if self.ud_version == 2 else 104,
 			'pos_tags': len(self.POS_TAGS) + 1}
 	
 	

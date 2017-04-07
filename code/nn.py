@@ -35,6 +35,7 @@ class NeuralNetwork:
 		"""
 		if model is None:
 			assert isinstance(vocab_sizes['lemmas'], int)
+			assert isinstance(vocab_sizes['morph'], int)
 			assert isinstance(vocab_sizes['pos_tags'], int)
 			self._init_model(vocab_sizes)
 		else:
@@ -71,20 +72,21 @@ class NeuralNetwork:
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network takes as input the POS tags, the morphological features and
-		the lemmas of two nodes and their immediate neighbours (the context),
-		as well as their relative position to each other, and produces the
-		probability of an edge between these two nodes.
+		The network takes as input the POS tags and the morphological features
+		of two nodes and their immediate neighbours (the context), as well as
+		the nodes' lemmas and their relative position to each other, and tries
+		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(1,), dtype='int32')
-		pos_a_prev = Input(shape=(1,), dtype='int32')
-		pos_a_next = Input(shape=(1,), dtype='int32')
+		pos_a = Input(shape=(1,), dtype='int32', name='pos(a)')
+		pos_a_prev = Input(shape=(1,), dtype='int32', name='pos(a-1)')
+		pos_a_next = Input(shape=(1,), dtype='int32', name='pos(a+1)')
 		
-		pos_b = Input(shape=(1,), dtype='int32')
-		pos_b_prev = Input(shape=(1,), dtype='int32')
-		pos_b_next = Input(shape=(1,), dtype='int32')
+		pos_b = Input(shape=(1,), dtype='int32', name='pos(b)')
+		pos_b_prev = Input(shape=(1,), dtype='int32', name='pos(b-1)')
+		pos_b_next = Input(shape=(1,), dtype='int32', name='pos(b+1)')
 		
-		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32,
+						input_length=1, name='pos embedding')
 		pos = merge([
 			Flatten()(pos_embed(pos_a_prev)),
 			Flatten()(pos_embed(pos_a)),
@@ -93,27 +95,28 @@ class NeuralNetwork:
 			Flatten()(pos_embed(pos_b)),
 			Flatten()(pos_embed(pos_b_next))], mode='concat')
 		
-		morph_a = Input(shape=(104,))
-		morph_a_prev = Input(shape=(104,))
-		morph_a_next = Input(shape=(104,))
+		morph_a = Input(shape=(vocab_sizes['morph'],), name='morph(a)')
+		morph_a_prev = Input(shape=(vocab_sizes['morph'],), name='morph(a-1)')
+		morph_a_next = Input(shape=(vocab_sizes['morph'],), name='morph(a+1)')
 		
-		morph_b = Input(shape=(104,))
-		morph_b_prev = Input(shape=(104,))
-		morph_b_next = Input(shape=(104,))
+		morph_b = Input(shape=(vocab_sizes['morph'],), name='morph(b)')
+		morph_b_prev = Input(shape=(vocab_sizes['morph'],), name='morph(b-1)')
+		morph_b_next = Input(shape=(vocab_sizes['morph'],), name='morph(b+1)')
 		
 		morph = merge([
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next], mode='concat')
 		morph = Dense(64, init='uniform', activation='relu')(morph)
 		
-		lemma_a = Input(shape=(1,), dtype='int32')
-		lemma_b = Input(shape=(1,), dtype='int32')
-		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
+		lemma_a = Input(shape=(1,), dtype='int32', name='lemma(a)')
+		lemma_b = Input(shape=(1,), dtype='int32', name='lemma(b)')
+		lemma_embed = Embedding(vocab_sizes['lemmas'], 256,
+						input_length=1, name='lemma embedding')
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
 		
-		rel_pos_raw = Input(shape=(1,))
+		rel_pos_raw = Input(shape=(1,), name='b-a')
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
 		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
