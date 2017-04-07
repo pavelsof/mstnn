@@ -14,11 +14,11 @@ edge of each sentence graph.
 Used in the train and calc_probs methods of the NeuralNetwork class below.
 """
 EDGE_FEATURES = tuple([
-	'pos A-1', 'pos A', 'pos A+1',
-	'pos B-1', 'pos B', 'pos B+1',
-	'morph A-1', 'morph A', 'morph A+1',
-	'morph B-1', 'morph B', 'morph B+1',
-	'lemma A', 'lemma B', 'B-A'])
+	'pos_A-1', 'pos_A', 'pos_A+1',
+	'pos_B-1', 'pos_B', 'pos_B+1',
+	'morph_A-1', 'morph_A', 'morph_A+1',
+	'morph_B-1', 'morph_B', 'morph_B+1',
+	'lemma_A', 'lemma_B', 'B-A'])
 
 
 
@@ -77,16 +77,16 @@ class NeuralNetwork:
 		the nodes' lemmas and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(1,), dtype='int32', name='pos A')
-		pos_a_prev = Input(shape=(1,), dtype='int32', name='pos A-1')
-		pos_a_next = Input(shape=(1,), dtype='int32', name='pos A+1')
+		pos_a = Input(shape=(1,), dtype='int32', name='pos_A')
+		pos_a_prev = Input(shape=(1,), dtype='int32', name='pos_A-1')
+		pos_a_next = Input(shape=(1,), dtype='int32', name='pos_A+1')
 		
-		pos_b = Input(shape=(1,), dtype='int32', name='pos B')
-		pos_b_prev = Input(shape=(1,), dtype='int32', name='pos B-1')
-		pos_b_next = Input(shape=(1,), dtype='int32', name='pos B+1')
+		pos_b = Input(shape=(1,), dtype='int32', name='pos_B')
+		pos_b_prev = Input(shape=(1,), dtype='int32', name='pos_B-1')
+		pos_b_next = Input(shape=(1,), dtype='int32', name='pos_B+1')
 		
 		pos_embed = Embedding(vocab_sizes['pos_tags'], 32,
-						input_length=1, name='pos embedding')
+						input_length=1, name='pos_embedding')
 		pos = merge([
 			Flatten()(pos_embed(pos_a_prev)),
 			Flatten()(pos_embed(pos_a)),
@@ -95,23 +95,23 @@ class NeuralNetwork:
 			Flatten()(pos_embed(pos_b)),
 			Flatten()(pos_embed(pos_b_next))], mode='concat')
 		
-		morph_a = Input(shape=(vocab_sizes['morph'],), name='morph A')
-		morph_a_prev = Input(shape=(vocab_sizes['morph'],), name='morph A-1')
-		morph_a_next = Input(shape=(vocab_sizes['morph'],), name='morph A+1')
+		morph_a = Input(shape=(vocab_sizes['morph'],), name='morph_A')
+		morph_a_prev = Input(shape=(vocab_sizes['morph'],), name='morph_A-1')
+		morph_a_next = Input(shape=(vocab_sizes['morph'],), name='morph_A+1')
 		
-		morph_b = Input(shape=(vocab_sizes['morph'],), name='morph B')
-		morph_b_prev = Input(shape=(vocab_sizes['morph'],), name='morph B-1')
-		morph_b_next = Input(shape=(vocab_sizes['morph'],), name='morph B+1')
+		morph_b = Input(shape=(vocab_sizes['morph'],), name='morph_B')
+		morph_b_prev = Input(shape=(vocab_sizes['morph'],), name='morph_B-1')
+		morph_b_next = Input(shape=(vocab_sizes['morph'],), name='morph_B+1')
 		
 		morph = merge([
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next], mode='concat')
 		morph = Dense(64, init='uniform', activation='relu')(morph)
 		
-		lemma_a = Input(shape=(1,), dtype='int32', name='lemma A')
-		lemma_b = Input(shape=(1,), dtype='int32', name='lemma B')
+		lemma_a = Input(shape=(1,), dtype='int32', name='lemma_A')
+		lemma_b = Input(shape=(1,), dtype='int32', name='lemma_B')
 		lemma_embed = Embedding(vocab_sizes['lemmas'], 256,
-						input_length=1, name='lemma embedding')
+						input_length=1, name='lemma_embedding')
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
