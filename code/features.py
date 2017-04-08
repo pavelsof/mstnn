@@ -5,12 +5,14 @@ vectors understood by the nn module.
 
 from collections import defaultdict
 
+import itertools
 import json
 
 import h5py
 
 import numpy as np
 
+from code.nn import EDGE_FEATURES
 from code import ud
 
 
@@ -29,6 +31,9 @@ class Extractor:
 	Makes the first pass over the data, collecting what is necessary in order
 	to determine the dimensions of the neural network. Provides the featurise_*
 	methods (which would otherwise need to expect the UD version as an arg).
+	
+	Then makes the second pass over the data, collecting the samples (and
+	possibly the targets) to be fed into the neural network.
 	"""
 	
 	def __init__(self, ud_version=2):
@@ -204,36 +209,63 @@ class Extractor:
 		return np.array(vector)
 	
 	
-	def featurise_edge(self, graph, edge):
+	def extract(self, dataset, include_targets=False):
 		"""
-		Returns the features for the edge (defined by the given tuple) in the
-		given graph. Non-edges can also be featurised.
+		Extracts and returns the samples, and possibly also the targets, from
+		the given conllu.Dataset instance.
 		
-		The return value is a dict the keys of which should be the same as the
-		ones listed in code.nn.EDGE_FEATURES.
+		Assumes that the latter is already read, i.e. this Extractor instance
+		has already populated its self.lemmas dict.
+		
+		The samples comprise a dict where the keys are nn.EDGE_FEATURES and the
+		values are numpy arrays. The targets are a numpy array of 0s and 1s.
 		"""
-		a, b = edge
-		d = {}
+		samples = {key: [] for key in EDGE_FEATURES}
+		targets = []
 		
-		d['pos A-1'] = 0 if a-1 < 0 else self.featurise_pos_tag(graph.node[a-1]['UPOSTAG'])
-		d['pos A'] = self.featurise_pos_tag(graph.node[a]['UPOSTAG'])
-		d['pos A+1'] = 0 if a+1 >= len(graph) else self.featurise_pos_tag(graph.node[a+1]['UPOSTAG'])
+		for graph in dataset.gen_graphs():
+			nodes = graph.nodes()
+			edges = graph.edges()
+			
+			pos_tags = {i: self.featurise_pos_tag(graph.node[i]['UPOSTAG']) for i in nodes}
+			pos_tags[-1] = 0
+			pos_tags[len(nodes)] = 0
+			
+			morph = {i: self.featurise_morph(graph.node[i]['FEATS']) for i in nodes}
+			morph[-1] = self.featurise_morph('_')
+			morph[len(nodes)] = self.featurise_morph('_')
+			
+			lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
+			
+			for a, b in itertools.permutations(nodes, 2):
+				samples['pos A-1'].append(pos_tags[a-1])
+				samples['pos A'].append(pos_tags[a])
+				samples['pos A+1'].append(pos_tags[a+1])
+				
+				samples['pos B-1'].append(pos_tags[b-1])
+				samples['pos B'].append(pos_tags[b])
+				samples['pos B+1'].append(pos_tags[b+1])
+				
+				samples['morph A-1'].append(morph[a-1])
+				samples['morph A'].append(morph[a])
+				samples['morph A+1'].append(morph[a+1])
+				
+				samples['morph B-1'].append(morph[b-1])
+				samples['morph B'].append(morph[b])
+				samples['morph B+1'].append(morph[b+1])
+				
+				samples['lemma A'].append(lemmas[a])
+				samples['lemma B'].append(lemmas[b])
+				
+				samples['B-A'].append(b-a)
+				
+				if include_targets:
+					targets.append((a, b) in edges)
 		
-		d['pos B-1'] = 0 if b-1 < 0 else self.featurise_pos_tag(graph.node[b-1]['UPOSTAG'])
-		d['pos B'] = self.featurise_pos_tag(graph.node[b]['UPOSTAG'])
-		d['pos B+1'] = 0 if b+1 >= len(graph) else self.featurise_pos_tag(graph.node[b+1]['UPOSTAG'])
+		samples = {key: np.array(value) for key, value in samples.items()}
+		targets = np.array(targets)
 		
-		d['morph A-1'] = self.featurise_morph('_' if a-1 < 0 else graph.node[a-1]['FEATS'])
-		d['morph A'] = self.featurise_morph(graph.node[a]['FEATS'])
-		d['morph A+1'] = self.featurise_morph('_' if a+1 >= len(graph) else graph.node[a+1]['FEATS'])
-		
-		d['morph B-1'] = self.featurise_morph('_' if b-1 < 0 else graph.node[b-1]['FEATS'])
-		d['morph B'] = self.featurise_morph(graph.node[b]['FEATS'])
-		d['morph B+1'] = self.featurise_morph('_' if b+1 >= len(graph) else graph.node[b+1]['FEATS'])
-		
-		d['lemma A'] = self.featurise_lemma(graph.node[a]['LEMMA'])
-		d['lemma B'] = self.featurise_lemma(graph.node[b]['LEMMA'])
-		
-		d['B-A'] = b - a
-		
-		return d
+		if include_targets:
+			return samples, targets
+		else:
+			return samples

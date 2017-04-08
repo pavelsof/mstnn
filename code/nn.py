@@ -1,9 +1,5 @@
-import itertools
-
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
-
-import numpy as np
 
 
 
@@ -11,7 +7,7 @@ import numpy as np
 Tuple listing the names of the features that are fed into the network for each
 edge of each sentence graph.
 
-Used in the train and calc_probs methods of the NeuralNetwork class below.
+Used as the keys of the samples dict returned by the Extractor.extract method.
 """
 EDGE_FEATURES = tuple([
 	'pos A-1', 'pos A', 'pos A+1',
@@ -134,45 +130,21 @@ class NeuralNetwork:
 				metrics=['accuracy'])
 	
 	
-	def train(self, dataset, extractor, epochs=10):
+	def train(self, samples, targets, epochs=10):
 		"""
-		Expects a conllu.Dataset instance to train on and a features.Extractor
-		instance to extract the feature vectors with.
+		Trains the network. The first arg should be a dict where the keys are
+		EDGE_FEATURES and the values numpy arrays. The second one should be a
+		single numpy array of 0s and 1s.
 		"""
-		feats = {key: [] for key in EDGE_FEATURES}
-		targets = []
-		
-		for graph in dataset.gen_graphs():
-			edges = graph.edges()
-			
-			for a, b in itertools.permutations(graph.nodes(), 2):
-				d = extractor.featurise_edge(graph, (a, b))
-				for key, value in d.items():
-					feats[key].append(value)
-				
-				targets.append((a, b) in edges)
-		
-		self.model.fit([np.array(feats[key]) for key in EDGE_FEATURES],
-			np.array(targets), batch_size=32, nb_epoch=epochs, shuffle=True)
+		self.model.fit([samples[key] for key in EDGE_FEATURES],
+			targets, batch_size=32, nb_epoch=epochs, shuffle=True)
 	
 	
-	def calc_probs(self, graph, extractor):
+	def calc_probs(self, samples):
 		"""
-		Calculates the probabilities of each edge.
+		Calculates the probabilities of each edge. The arg should be a dict
+		where the keys are EDGE_FEATURES and the values are the respective
+		numpy arrays.
 		"""
-		feats = {key: [] for key in EDGE_FEATURES}
-		
-		for a, b in itertools.permutations(graph.nodes(), 2):
-			d = extractor.featurise_edge(graph, (a, b))
-			for key, value in d.items():
-				feats[key].append(value)
-		
-		feats = [np.array(feats[key]) for key in EDGE_FEATURES]
-		probs = self.model.predict(feats, verbose=1)
-		
-		scores = {}
-		
-		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
-			scores[(a, b)] = probs[index][0]
-		
-		return scores
+		return self.model.predict([samples[key] for key in EDGE_FEATURES],
+			batch_size=32, verbose=1)

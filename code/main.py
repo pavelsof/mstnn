@@ -1,3 +1,5 @@
+from itertools import permutations
+
 import networkx as nx
 
 from code.conllu import Dataset
@@ -16,9 +18,10 @@ def train(model_fp, data_fp, ud_version=2):
 	
 	extractor = Extractor(ud_version)
 	extractor.read(dataset)
+	samples, targets = extractor.extract(dataset, include_targets=True)
 	
 	neural_net = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes())
-	neural_net.train(dataset, extractor)
+	neural_net.train(samples, targets)
 	
 	save_model(model_fp, extractor, neural_net)
 
@@ -30,19 +33,29 @@ def parse(model_fp, data_fp, output_fp):
 	previously trained mstnn model file, the path to the dataset file, and the
 	path where to write the parsed sentences.
 	"""
-	parsed = []
-	
 	extractor, neural_net = load_model(model_fp)
 	
 	dataset = Dataset(data_fp)
 	
-	for graph in dataset.gen_graphs():
-		scores = neural_net.calc_probs(graph, extractor)
+	samples = extractor.extract(dataset, include_targets=False)
+	probs = neural_net.calc_probs(samples)
+	
+	parsed = []
+	count = 0
+	
+	for edgeless_graph in dataset.gen_graphs():
+		nodes = edgeless_graph.nodes()
+		scores = {}
 		
-		tree = find_mst(Graph(list(graph.nodes()), scores=scores))
+		for index, (a, b) in enumerate(permutations(nodes, 2)):
+			scores[(a, b)] = probs[count+index][0]
+		
+		count = count + index + 1
+		
+		tree = find_mst(Graph(nodes, scores=scores))
 		
 		new_graph = nx.DiGraph()
-		new_graph.add_nodes_from(graph.nodes(data=True))
+		new_graph.add_nodes_from(edgeless_graph.nodes(data=True))
 		new_graph.add_edges_from(tree.edges)
 		
 		parsed.append(new_graph)
