@@ -262,10 +262,17 @@ class Extractor:
 				if include_targets:
 					targets.append((a, b) in edges)
 		
-		samples = {key: np.array(value) for key, value in samples.items()}
-		targets = np.array(targets)
+		samples_ = {}
+		for key, value in samples.items():
+			if key.startswith('lemma'):
+				samples_[key] = np.array(value, dtype='uint32')
+			else:
+				samples_[key] = np.array(value, dtype='uint8')
+		del samples
+		
+		targets = np.array(targets, dtype='uint8')
 		
 		if include_targets:
-			return samples, targets
+			return samples_, targets
 		else:
-			return samples
+			return samples_

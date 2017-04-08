@@ -73,13 +73,13 @@ class NeuralNetwork:
 		the nodes' lemmas and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(1,), dtype='int32')
-		pos_a_prev = Input(shape=(1,), dtype='int32')
-		pos_a_next = Input(shape=(1,), dtype='int32')
+		pos_a = Input(shape=(1,), dtype='uint8')
+		pos_a_prev = Input(shape=(1,), dtype='uint8')
+		pos_a_next = Input(shape=(1,), dtype='uint8')
 		
-		pos_b = Input(shape=(1,), dtype='int32')
-		pos_b_prev = Input(shape=(1,), dtype='int32')
-		pos_b_next = Input(shape=(1,), dtype='int32')
+		pos_b = Input(shape=(1,), dtype='uint8')
+		pos_b_prev = Input(shape=(1,), dtype='uint8')
+		pos_b_next = Input(shape=(1,), dtype='uint8')
 		
 		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
 		pos = merge([
@@ -103,8 +103,8 @@ class NeuralNetwork:
 			morph_b_prev, morph_b, morph_b_next], mode='concat')
 		morph = Dense(64, init='uniform', activation='relu')(morph)
 		
-		lemma_a = Input(shape=(1,), dtype='int32')
-		lemma_b = Input(shape=(1,), dtype='int32')
+		lemma_a = Input(shape=(1,), dtype='uint32')
+		lemma_b = Input(shape=(1,), dtype='uint32')
 		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
