@@ -105,7 +105,7 @@ class NeuralNetwork:
 		
 		lemma_a = Input(shape=(1,), dtype='uint16')
 		lemma_b = Input(shape=(1,), dtype='uint16')
-		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
+		lemma_embed = Embedding(vocab_sizes['lemmas'], 64, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
