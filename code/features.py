@@ -265,7 +265,7 @@ class Extractor:
 		samples_ = {}
 		for key, value in samples.items():
 			if key.startswith('lemma'):
-				samples_[key] = np.array(value, dtype='uint32')
+				samples_[key] = np.array(value, dtype='uint16')
 			else:
 				samples_[key] = np.array(value, dtype='uint8')
 		del samples
