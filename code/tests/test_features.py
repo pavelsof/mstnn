@@ -37,20 +37,20 @@ class FeaturesTestCase(TestCase):
 	
 	
 	@given(sets(text()))
-	def test_featurise_lemma(self, lemmas):
-		assume(all([lemma not in ['_', '__root__'] for lemma in lemmas]))
+	def test_featurise_form(self, forms):
+		assume(all([form not in ['_', '__root__'] for form in forms]))
 		
 		extractor = Extractor(ud_version=2)
-		for lemma in lemmas:
-			extractor.lemmas[lemma]
+		for form in forms:
+			extractor.forms[form]
 		
-		self.assertEqual(extractor.get_vocab_sizes()['lemmas'], len(lemmas)+2)
+		self.assertEqual(extractor.get_vocab_sizes()['forms'], len(forms)+2)
 		
-		self.assertEqual(extractor.featurise_lemma('_'), 0)
-		self.assertEqual(extractor.featurise_lemma('__root__'), 1)
+		self.assertEqual(extractor.featurise_form('_'), 0)
+		self.assertEqual(extractor.featurise_form('__root__'), 1)
 		
-		res = [extractor.featurise_lemma(lemma) for lemma in lemmas]
-		self.assertEqual(len(res), len(lemmas))
+		res = [extractor.featurise_form(form) for form in forms]
+		self.assertEqual(len(res), len(forms))
 		self.assertTrue(all([number not in [0, 1] for number in res]))
 	
 	
@@ -102,9 +102,9 @@ class FeaturesTestCase(TestCase):
 	
 	
 	@given(dictionaries(text(), integers()))
-	def test_model_files(self, lemmas):
-		for key, value in lemmas.items():
-			self.ext.lemmas[key] = value
+	def test_model_files(self, forms):
+		for key, value in forms.items():
+			self.ext.forms[key] = value
 		
 		with tempfile.TemporaryDirectory() as temp_dir:
 			path = os.path.join(temp_dir, 'model')
@@ -113,7 +113,7 @@ class FeaturesTestCase(TestCase):
 		
 		self.assertTrue(isinstance(new_ext, Extractor))
 		self.assertEqual(new_ext.ud_version, self.ext.ud_version)
-		self.assertEqual(new_ext.lemmas, self.ext.lemmas)
+		self.assertEqual(new_ext.forms, self.ext.forms)
 	
 	
 	def test_model_files_error(self):

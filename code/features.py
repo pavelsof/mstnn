@@ -42,10 +42,9 @@ class Extractor:
 		featurising the POS tags, dependency relations, and morphology. Raises
 		a ValueError if the UD version is unknown.
 		
-		The lemmas dict provides unique IDs to the lemmas found in the dataset
-		that the features are extracted from. ID 0 is used for unrecognised
-		lemmas, hence the underscore. ID 1 is used for the non-standard root
-		node lemma (__root__).
+		The forms dict provides unique IDs to the forms found in the dataset.
+		ID 0 is used for the unrecognised forms, hence the underscore. ID 1 is
+		used for the non-standard root node form (__root__).
 		"""
 		if ud_version == 1:
 			self.POS_TAGS = ud.POS_TAGS_V1
@@ -60,15 +59,15 @@ class Extractor:
 		
 		self.ud_version = ud_version
 		
-		self.lemmas = defaultdict(lambda: len(self.lemmas))
-		self.lemmas['_']
-		self.lemmas['__root__']
+		self.forms = defaultdict(lambda: len(self.forms))
+		self.forms['_']
+		self.forms['__root__']
 	
 	
 	@classmethod
 	def create_from_model_file(cls, model_fp):
 		"""
-		Returns a new Extractor instance with self.ud_version and self.lemmas
+		Returns a new Extractor instance with self.ud_version and self.forms
 		loaded from the specified model file. The latter is expected to be a
 		hdf5 file written or appended to by the method below.
 		
@@ -77,14 +76,14 @@ class Extractor:
 		f = h5py.File(model_fp, 'r')
 		
 		ud_version = f['extractor'].attrs['ud_version']
-		lemmas = json.loads(f['extractor'].attrs['lemmas'])
+		forms = json.loads(f['extractor'].attrs['forms'])
 		
 		f.close()
 		
 		extractor = Extractor(ud_version)
 		
-		for key, value in lemmas.items():
-			extractor.lemmas[key] = value
+		for key, value in forms.items():
+			extractor.forms[key] = value
 		
 		return extractor
 	
@@ -92,7 +91,7 @@ class Extractor:
 	def write_to_model_file(self, model_fp):
 		"""
 		Appends to the specified hdf5 file, storing the UD version and the
-		extracted lemmas. Thus, an identical Extractor can be later restored
+		extracted forms. Thus, an identical Extractor can be later restored
 		using the above class method.
 		
 		Raises an OSError if the file cannot be written.
@@ -101,7 +100,7 @@ class Extractor:
 		
 		group = f.create_group('extractor')
 		group.attrs['ud_version'] = self.ud_version
-		group.attrs['lemmas'] = json.dumps(dict(self.lemmas), ensure_ascii=False)
+		group.attrs['forms'] = json.dumps(dict(self.forms), ensure_ascii=False)
 		
 		f.flush()
 		f.close()
@@ -110,37 +109,37 @@ class Extractor:
 	def read(self, dataset):
 		"""
 		Reads the data provided by the given conllu.Dataset instance and
-		compiles the self.lemmas dict.
+		compiles the self.forms dict.
 		"""
 		for sent in dataset.gen_sentences():
-			[self.lemmas[word.LEMMA] for word in sent]
+			[self.forms[word.FORM] for word in sent]
 	
 	
 	def get_vocab_sizes(self):
 		"""
-		Returns a {} containing: (*) the number of lemma IDs, i.e. the number
-		of lemmas found during reading + 1 (for the unrecognised lemmas ID);
+		Returns a {} containing: (*) the number of word form IDs, i.e. the
+		number of forms found during reading (which includes the IDs 0 and 1);
 		(*) the number of POS tags + 1 (for the tags of the padding); (*) the
 		size of the vectors returned by the featurise_morph method.
 		
-		These are used as parameters the POS and lemma embedding and the
+		These are used as parameters the POS and form embedding and the
 		morphology input layers of the neural network.
 		"""
 		return {
-			'lemmas': len(self.lemmas),
+			'forms': len(self.forms),
 			'morph': 135 if self.ud_version == 2 else 104,
 			'pos_tags': len(self.POS_TAGS) + 1}
 	
 	
-	def featurise_lemma(self, lemma):
+	def featurise_form(self, form):
 		"""
-		Returns an integer uniquely identifying the given lemma. If the lemma
-		has not been found during reading, returns 0.
+		Returns an integer uniquely identifying the given word form. If the
+		latter has not been found during reading, returns 0.
 		"""
-		if lemma not in self.lemmas:
+		if form not in self.forms:
 			return 0
 		
-		return self.lemmas[lemma]
+		return self.forms[form]
 	
 	
 	def featurise_pos_tag(self, pos_tag):
@@ -215,7 +214,7 @@ class Extractor:
 		the given conllu.Dataset instance.
 		
 		Assumes that the latter is already read, i.e. this Extractor instance
-		has already populated its self.lemmas dict.
+		has already populated its self.forms dict.
 		
 		The samples comprise a dict where the keys are nn.EDGE_FEATURES and the
 		values are numpy arrays. The targets are a numpy array of 0s and 1s.
@@ -235,7 +234,7 @@ class Extractor:
 			morph[-1] = self.featurise_morph('_')
 			morph[len(nodes)] = self.featurise_morph('_')
 			
-			lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
+			forms = {i: self.featurise_form(graph.node[i]['FORM']) for i in nodes}
 			
 			for a, b in itertools.permutations(nodes, 2):
 				samples['pos A-1'].append(pos_tags[a-1])
@@ -254,8 +253,8 @@ class Extractor:
 				samples['morph B'].append(morph[b])
 				samples['morph B+1'].append(morph[b+1])
 				
-				samples['lemma A'].append(lemmas[a])
-				samples['lemma B'].append(lemmas[b])
+				samples['form A'].append(forms[a])
+				samples['form B'].append(forms[b])
 				
 				samples['B-A'].append(b-a)
 				
@@ -264,7 +263,7 @@ class Extractor:
 		
 		samples_ = {}
 		for key, value in samples.items():
-			if key.startswith('lemma'):
+			if key.startswith('form'):
 				samples_[key] = np.array(value, dtype='uint16')
 			else:
 				samples_[key] = np.array(value, dtype='uint8')

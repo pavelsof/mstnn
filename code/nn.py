@@ -14,7 +14,7 @@ EDGE_FEATURES = tuple([
 	'pos B-1', 'pos B', 'pos B+1',
 	'morph A-1', 'morph A', 'morph A+1',
 	'morph B-1', 'morph B', 'morph B+1',
-	'lemma A', 'lemma B', 'B-A'])
+	'form A', 'form B', 'B-A'])
 
 
 
@@ -30,7 +30,7 @@ class NeuralNetwork:
 		are ignored otherwise).
 		"""
 		if model is None:
-			assert isinstance(vocab_sizes['lemmas'], int)
+			assert isinstance(vocab_sizes['forms'], int)
 			assert isinstance(vocab_sizes['morph'], int)
 			assert isinstance(vocab_sizes['pos_tags'], int)
 			self._init_model(vocab_sizes)
@@ -70,7 +70,7 @@ class NeuralNetwork:
 		
 		The network takes as input the POS tags and the morphological features
 		of two nodes and their immediate neighbours (the context), as well as
-		the nodes' lemmas and their relative position to each other, and tries
+		the nodes' forms and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
 		pos_a = Input(shape=(1,), dtype='uint8')
@@ -103,17 +103,17 @@ class NeuralNetwork:
 			morph_b_prev, morph_b, morph_b_next], mode='concat')
 		morph = Dense(64, init='uniform', activation='relu')(morph)
 		
-		lemma_a = Input(shape=(1,), dtype='uint16')
-		lemma_b = Input(shape=(1,), dtype='uint16')
-		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
-		lemmas = merge([
-			Flatten()(lemma_embed(lemma_a)),
-			Flatten()(lemma_embed(lemma_b))], mode='concat')
+		form_a = Input(shape=(1,), dtype='uint16')
+		form_b = Input(shape=(1,), dtype='uint16')
+		form_embed = Embedding(vocab_sizes['forms'], 256, input_length=1)
+		forms = merge([
+			Flatten()(form_embed(form_a)),
+			Flatten()(form_embed(form_b))], mode='concat')
 		
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
-		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
+		x = merge([pos, morph, forms, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
@@ -123,7 +123,7 @@ class NeuralNetwork:
 			pos_b_prev, pos_b, pos_b_next,
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+			form_a, form_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',

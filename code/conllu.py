@@ -103,14 +103,17 @@ class Dataset:
 		an edge attribute.
 		
 		Unlike self.gen_sentences, the output here has an explicit root node
-		with its own POS tag (ROOT) and lemma (__root__) which are not part of
-		the UD standard, but still needed for the purposes of mstnn.
+		with its own POS tag (ROOT), lemma and form (__root__) which are not
+		part of the UD standard, but still needed for the purposes of mstnn.
 		
 		Raises ConlluError if the file does not conform to the ConLL-U format.
 		"""
 		for sent in self.gen_sentences():
 			graph = nx.DiGraph()
-			graph.add_node(0, UPOSTAG='ROOT', FEATS='_', LEMMA='__root__')
+			
+			graph.add_node(0,
+				FORM='__root__', LEMMA='__root__',
+				UPOSTAG='ROOT', FEATS='_')
 			
 			for word in sent:
 				graph.add_node(word.ID,
