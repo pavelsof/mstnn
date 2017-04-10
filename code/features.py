@@ -112,8 +112,15 @@ class Extractor:
 		Reads the data provided by the given conllu.Dataset instance and
 		compiles the self.lemmas dict.
 		"""
+		counts = defaultdict(lambda: 0)
+		
 		for sent in dataset.gen_sentences():
-			[self.lemmas[word.LEMMA] for word in sent]
+			for word in sent:
+				counts[word.LEMMA] += 1
+		
+		for lemma, count in counts.items():
+			if count > 1:
+				self.lemmas[lemma]
 	
 	
 	def get_vocab_sizes(self):
