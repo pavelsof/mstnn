@@ -1,6 +1,9 @@
 from itertools import permutations
 
+from gensim.models.keyedvectors import KeyedVectors
+
 import networkx as nx
+import numpy as np
 
 from code.conllu import Dataset
 from code.features import Extractor
@@ -9,18 +12,34 @@ from code.nn import NeuralNetwork
 
 
 
-def train(model_fp, data_fp, ud_version=2):
+def train(model_fp, data_fp, ud_version=2, embed_fp=None):
 	"""
 	Trains an mstnn model. Expects a path where the model will be written to,
 	and a path to a .conllu dataset that will be used for training.
 	"""
 	dataset = Dataset(data_fp)
 	
-	extractor = Extractor(ud_version)
+	if embed_fp:
+		keyed = KeyedVectors.load_word2vec_format(embed_fp)
+		
+		forms_indices = {word: index
+				for index, word in enumerate(keyed.index2word, 1)}
+		forms_indices['_'] = 0
+		forms_indices['__root__'] = forms_indices.pop('</s>')
+		
+		forms_weights = np.concatenate([
+				np.zeros(shape=(1, 50,), dtype=np.float32),
+				keyed.syn0])
+	else:
+		forms_indices = None
+		forms_weights = None
+	
+	extractor = Extractor(ud_version, forms_indices)
 	extractor.read(dataset)
 	samples, targets = extractor.extract(dataset, include_targets=True)
 	
-	neural_net = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes())
+	neural_net = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes(),
+						forms_weights=forms_weights)
 	neural_net.train(samples, targets)
 	
 	save_model(model_fp, extractor, neural_net)

@@ -36,7 +36,7 @@ class Extractor:
 	possibly the targets) to be fed into the neural network.
 	"""
 	
-	def __init__(self, ud_version=2):
+	def __init__(self, ud_version=2, forms_indices=None):
 		"""
 		Constructor. The keyword argument specifies the UD version to use when
 		featurising the POS tags, dependency relations, and morphology. Raises
@@ -59,9 +59,15 @@ class Extractor:
 		
 		self.ud_version = ud_version
 		
-		self.forms = defaultdict(lambda: len(self.forms))
-		self.forms['_']
-		self.forms['__root__']
+		self.to_read = set(['forms'])
+		
+		if forms_indices:
+			self.forms = forms_indices
+			self.to_read.remove('forms')
+		else:
+			self.forms = defaultdict(lambda: len(self.forms))
+			self.forms['_']
+			self.forms['__root__']
 	
 	
 	@classmethod
@@ -111,8 +117,9 @@ class Extractor:
 		Reads the data provided by the given conllu.Dataset instance and
 		compiles the self.forms dict.
 		"""
-		for sent in dataset.gen_sentences():
-			[self.forms[word.FORM] for word in sent]
+		if 'forms' in self.to_read:
+			for sent in dataset.gen_sentences():
+				[self.forms[word.FORM] for word in sent]
 	
 	
 	def get_vocab_sizes(self):

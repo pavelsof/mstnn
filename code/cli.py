@@ -42,7 +42,8 @@ class Cli:
 		"""
 		def _train(args):
 			from code.main import train
-			train(args.model_file, args.conllu_file, ud_version=args.ud_version)
+			train(args.model_file, args.conllu_file,
+					ud_version=args.ud_version, embed_fp=args.form_embeddings)
 		
 		description = 'train an mstnn model from conllu data'
 		
@@ -58,6 +59,9 @@ class Cli:
 		
 		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
 			'the UD version to use; either 1 or 2 (the default)'))
+		subp.add_argument('-e', '--form-embeddings', help=(
+			'path to pre-trained word form embeddings file; '
+			'the embedding vectors are assumed to be of length 50'))
 		
 		subp.set_defaults(func=_train)
 	
