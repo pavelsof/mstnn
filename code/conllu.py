@@ -16,12 +16,14 @@ from collections import namedtuple
 
 import networkx as nx
 
+from code import ud
+
 
 
 """
 Represents a word, i.e. a row with an integer ID (excluding multiword tokens
-and empty nodes). With the exception of ID and HEAD which are integers, the
-other fields are non-empty strings.
+and empty nodes). With the exception of ID and HEAD which are integers, and
+FEATS which is a dict, the other fields are non-empty strings.
 """
 Word = namedtuple('Word', [
 	'ID', 'FORM', 'LEMMA',
@@ -41,24 +43,73 @@ class ConlluError(ValueError):
 
 class Dataset:
 	
-	def __init__(self, file_path):
+	def __init__(self, file_path, ud_version=2):
 		"""
 		Constructor. Expects the path to the .conllu dataset file. The latter
 		is not opened until one of the gen_* methods is invoked.
+		
+		The dataset's POS tags and dependency relations are checked against the
+		UD version specified by the keyword argument.
 		"""
 		self.file_path = file_path
+		
+		if ud_version == 1:
+			self.POS_TAGS = ud.POS_TAGS_V1
+			self.DEP_RELS = ud.DEP_RELS_V1
+			self.MORPH_FEATURES = ud.MORPH_FEATURES_V1
+		elif ud_version == 2:
+			self.POS_TAGS = ud.POS_TAGS_V2
+			self.DEP_RELS = ud.DEP_RELS_V2
+			self.MORPH_FEATURES = ud.MORPH_FEATURES_V2
+		else:
+			raise ValueError('Unknown UD version: {}'.format(ud_version))
+		
+		self.ud_version = ud_version
 	
 	
 	"""
 	Reading ConLL-U
 	"""
 	
+	def _read_word(self, line):
+		"""
+		Returns a Word named tuple from the given line; the latter is expected
+		to be a [] of strings. If the line does not define a word with an
+		integer ID, the method returns None.
+		
+		Raises a ValueError or an AssertionError if the line does not conform
+		to the format specified by the UD version in self.ud_version.
+		
+		Helper for self.gen_sentences.
+		"""
+		assert len(line) == 10 and all([item for item in line])
+		
+		if not line[0].isdigit():
+			assert all([c.isdigit() or c in ('-', '.') for c in line[0]])
+			return None
+		
+		line[0] = int(line[0])
+		line[6] = int(line[6])
+		
+		assert line[3] in self.POS_TAGS
+		assert line[7] in self.DEP_RELS
+		
+		if line[5] == '_':
+			line[5] = {}
+		else:
+			line[5] = {key: frozenset(value.split(','))
+				for key, value in map(lambda x: x.split('='), line[5].split('|'))}
+		
+		return Word._make(line)
+	
+	
 	def gen_sentences(self):
 		"""
 		Generator that yields a tuple of Word named tuples for each sentence in
 		the dataset.
 		
-		Raises ConlluError if the file does not conform to the CoNLL-U format.
+		Raises a ConlluError if the file does not conform to the CoNLL-U format
+		of the version specified by self.ud_version.
 		"""
 		sent = []
 		
@@ -69,17 +120,7 @@ class Dataset:
 						continue
 					
 					elif line:
-						line = line.split('\t')
-						assert len(line) == 10 and all([item for item in line])
-						
-						try:
-							line[0] = int(line[0])
-							line[6] = int(line[6])
-						except ValueError:
-							assert all([c.isdigit() or c in ('-', '.') for c in line[0]])
-							continue
-						
-						sent.append(Word._make(line))
+						sent.append(self._read_word(line.split('\t')))
 					
 					else:  # empty lines mark sentence boundaries
 						yield tuple(sent)
@@ -88,7 +129,7 @@ class Dataset:
 		except IOError:
 			raise ConlluError('Could not open {}'.format(self.file_path))
 		
-		except AssertionError:
+		except (AssertionError, ValueError):
 			raise ConlluError('Could not read {}:{}'.format(self.file_path, line_num))
 	
 	
@@ -106,7 +147,8 @@ class Dataset:
 		with its own POS tag (ROOT) and lemma (__root__) which are not part of
 		the UD standard, but still needed for the purposes of mstnn.
 		
-		Raises ConlluError if the file does not conform to the ConLL-U format.
+		Raises a ConlluError if the file does not conform to the CoNLL-U format
+		of the version specified by self.ud_version.
 		"""
 		for sent in self.gen_sentences():
 			graph = nx.DiGraph()
@@ -126,16 +168,37 @@ class Dataset:
 	"""
 	
 	@staticmethod
+	def format_word(word):
+		"""
+		Returns a single-line string representing a parsed word in CoNLL-U
+		format (excluding the newline character at the end). Expects a Word
+		named tuple as its sole argument.
+		
+		This method is static and is used as a helper for self.format_sentence
+		(and, hence, for self.write_sentence and self.write_graphs as well).
+		"""
+		if word.FEATS:
+			feats = '|'.join(['{}={}'.format(key, ','.join(sorted(value)))
+				for key, value in sorted(word.FEATS.items())])
+		else:
+			feats = '_'
+		
+		return '\t'.join([str(word.ID), word.FORM, word.LEMMA,
+				word.UPOSTAG, word.XPOSTAG, feats,
+				str(word.HEAD), word.DEPREL, word.DEPS, word.MISC])
+	
+	
+	@staticmethod
 	def format_sentence(sentence):
 		"""
-		Returns a multi-line string representing a parsed sentence in ConLL-U
+		Returns a multi-line string representing a parsed sentence in CoNLL-U
 		format (including the empty line at the end). Expects a sequence of
 		well-formated (i.e. no empty-string fields) Word named tuples.
 		
 		This method is static and is used as a helper for self.write_sentences
 		(and, hence, for self.write_graphs as well).
 		"""
-		lines = ['\t'.join(map(str, list(word))) for word in sentence]
+		lines = [Dataset.format_word(word) for word in sentence]
 		return '\n'.join(lines + ['', ''])
 	
 	
@@ -151,7 +214,7 @@ class Dataset:
 			with open(self.file_path, 'w', encoding='utf-8') as f:
 				for sentence in sentences:
 					assert all([isinstance(word, Word) for word in sentence])
-					f.write(self.format_sentence(sentence))
+					f.write(Dataset.format_sentence(sentence))
 		
 		except IOError:
 			raise ConlluError('Could not write {}'.format(self.file_path))
@@ -191,7 +254,7 @@ class Dataset:
 					data['LEMMA'],
 					data['UPOSTAG'],
 					data['XPOSTAG'] if 'XPOSTAG' in data else '_',
-					data['FEATS'] if 'FEATS' in data else '_',
+					data['FEATS'],
 					edge[0],
 					edge[2]['DEPREL'] if 'DEPREL' in edge[2] else '_',
 					data['DEPS'] if 'DEPS' in data else '_',

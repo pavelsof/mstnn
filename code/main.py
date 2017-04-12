@@ -14,7 +14,7 @@ def train(model_fp, data_fp, ud_version=2):
 	Trains an mstnn model. Expects a path where the model will be written to,
 	and a path to a .conllu dataset that will be used for training.
 	"""
-	dataset = Dataset(data_fp)
+	dataset = Dataset(data_fp, ud_version)
 	
 	extractor = Extractor(ud_version)
 	extractor.read(dataset)
