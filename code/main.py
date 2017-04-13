@@ -16,7 +16,7 @@ def train(model_fp, data_fp, ud_version=2):
 	"""
 	dataset = Dataset(data_fp, ud_version)
 	
-	extractor = Extractor(ud_version)
+	extractor = Extractor()
 	extractor.read(dataset)
 	samples, targets = extractor.extract(dataset, include_targets=True)
 	
