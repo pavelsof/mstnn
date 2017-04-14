@@ -16,15 +16,6 @@ from code.nn import EDGE_FEATURES
 
 
 
-class FeatureError(ValueError):
-	"""
-	Raised when an unrecognised input (i.e. non-existant POS tag) is given to
-	any of the featurise_* methods. Inited with a user-friendly message.
-	"""
-	pass
-
-
-
 class Extractor:
 	"""
 	Makes the first pass over the data, collecting what is necessary in order
@@ -37,10 +28,8 @@ class Extractor:
 	
 	def __init__(self):
 		"""
-		Constructor.
-		
-		The pos_tags tuple lists all the possible POS tags that a node could
-		belong to.
+		Constructor. The pos_tags tuple lists all the possible POS tags that a
+		node could belong to.
 		
 		The morph dict comprises the morphological features, both keys and
 		values, found in the dataset during the reading phase.
@@ -148,8 +137,8 @@ class Extractor:
 	
 	def featurise_lemma(self, lemma):
 		"""
-		Returns an integer uniquely identifying the given lemma. If the lemma
-		has not been found during reading, returns 0.
+		Returns a positive integer uniquely identifying the given lemma. If the
+		lemma has not been found during the reading phase, returns 0.
 		"""
 		if lemma not in self.lemmas:
 			return 0
@@ -159,9 +148,8 @@ class Extractor:
 	
 	def featurise_pos_tag(self, pos_tag):
 		"""
-		Returns a positive integer uniquely identifying the POS tag. Raises a
-		FeatureError if the given string is neither a valid universal POS tag
-		nor 'ROOT'.
+		Returns a positive integer uniquely identifying the given POS tag. If
+		the POS tag has not been found during the reading phase, returns 0.
 		"""
 		try:
 			return self.pos_tags.index(pos_tag) + 1
@@ -171,13 +159,12 @@ class Extractor:
 	
 	def featurise_morph(self, morph):
 		"""
-		Returns the feature vector corresponding to the given FEATS dict.
-		Raises a FeatureError if the string does not conform to the rules.
+		Returns the feature vector corresponding to the given morphological
+		features dict.
 		
-		The vector is a numpy array of zeroes and ones with each element
-		representing a possible value of the MORPH_FEATURES ordered dict. E.g.
-		the output for "Animacy=Anim" should be a vector with its second
-		element 1 and all the other elements zeroes.
+		The vector is a numpy array of 0s and 1s where each element represents
+		a morphological feature. E.g. the output for "Animacy=Anim" should be a
+		vector with its second element 1 and all the other elements zeroes.
 		"""
 		vector = []
 		

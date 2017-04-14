@@ -92,7 +92,7 @@ class Dataset:
 		line[6] = int(line[6])
 		
 		assert line[3] in self.POS_TAGS
-		assert line[7] in self.DEP_RELS
+		assert line[7] in self.DEP_RELS or line[7].split(':')[0] in self.DEP_RELS
 		
 		if line[5] == '_':
 			line[5] = {}
