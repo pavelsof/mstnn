@@ -200,8 +200,10 @@ class Extractor:
 			edges = graph.edges()
 			
 			pos_tags = {i: self.featurise_pos_tag(graph.node[i]['UPOSTAG']) for i in nodes}
+			pos_tags[-2] = 0
 			pos_tags[-1] = 0
 			pos_tags[len(nodes)] = 0
+			pos_tags[len(nodes)+1] = 0
 			
 			morph = {i: self.featurise_morph(graph.node[i]['FEATS']) for i in nodes}
 			morph[-1] = self.featurise_morph('_')
@@ -210,13 +212,17 @@ class Extractor:
 			lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
 			
 			for a, b in itertools.permutations(nodes, 2):
+				samples['pos A-2'].append(pos_tags[a-2])
 				samples['pos A-1'].append(pos_tags[a-1])
 				samples['pos A'].append(pos_tags[a])
 				samples['pos A+1'].append(pos_tags[a+1])
+				samples['pos A+2'].append(pos_tags[a+2])
 				
+				samples['pos B-2'].append(pos_tags[b-2])
 				samples['pos B-1'].append(pos_tags[b-1])
 				samples['pos B'].append(pos_tags[b])
 				samples['pos B+1'].append(pos_tags[b+1])
+				samples['pos B+2'].append(pos_tags[b+2])
 				
 				samples['morph A-1'].append(morph[a-1])
 				samples['morph A'].append(morph[a])
