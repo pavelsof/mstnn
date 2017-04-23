@@ -210,13 +210,8 @@ class Extractor:
 			lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
 			
 			for a, b in itertools.permutations(nodes, 2):
-				samples['pos A-1'].append(pos_tags[a-1])
-				samples['pos A'].append(pos_tags[a])
-				samples['pos A+1'].append(pos_tags[a+1])
-				
-				samples['pos B-1'].append(pos_tags[b-1])
-				samples['pos B'].append(pos_tags[b])
-				samples['pos B+1'].append(pos_tags[b+1])
+				samples['pos A'].append([pos_tags[a-1], pos_tags[a], pos_tags[a+1]])
+				samples['pos B'].append([pos_tags[b-1], pos_tags[b], pos_tags[b+1]])
 				
 				samples['morph A-1'].append(morph[a-1])
 				samples['morph A'].append(morph[a])
