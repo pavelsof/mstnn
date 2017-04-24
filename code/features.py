@@ -226,9 +226,6 @@ class Extractor:
 				samples['morph B'].append(morph[b])
 				samples['morph B+1'].append(morph[b+1])
 				
-				samples['lemma A'].append(lemmas[a])
-				samples['lemma B'].append(lemmas[b])
-				
 				samples['B-A'].append(b-a)
 				
 				if include_targets:
