@@ -21,7 +21,8 @@ def train(model_fp, data_fp, ud_version=2):
 	samples, targets = extractor.extract(dataset, include_targets=True)
 	
 	neural_net = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes())
-	neural_net.train(samples, targets)
+	neural_net.train(samples, targets,
+		on_epoch_end=lambda epoch, _: save_model(model_fp, extractor, neural_net, epoch))
 	
 	save_model(model_fp, extractor, neural_net)
 
@@ -68,16 +69,20 @@ def parse(model_fp, data_fp, output_fp):
 mstnn models
 """
 
-def save_model(model_fp, extractor, neural_net):
+def save_model(model_fp, extractor, neural_net, epoch=None):
 	"""
 	Writes a h5py file to the specified path. The file contains the keras model
-	of the given NeuralNetwork and the parameters of the given Extractor.
+	of the given NeuralNetwork and the parameters of the given Extractor. If an
+	epoch is specified, it is appended to the file path.
 	
 	Raises an OSError if the path cannot be written.
 	
 	The file is in fact the keras model file with an added h5py group at the
 	root level to hold the extractor data.
 	"""
+	if epoch is not None:
+		model_fp = model_fp + '-e{:02}'.format(epoch)
+	
 	neural_net.write_to_model_file(model_fp)
 	extractor.write_to_model_file(model_fp)
 
