@@ -11,7 +11,7 @@ class ScoreError(ValueError):
 
 
 
-def score(parsed_fp, standard_fp):
+def score(parsed, standard):
 	"""
 	Calculates and returns the UAS score of a dataset against another dataset,
 	usually parser output against gold-standard data. Expects the paths to two
@@ -19,8 +19,11 @@ def score(parsed_fp, standard_fp):
 	
 	Could raise a ConlluError or a ScoreError.
 	"""
-	parsed = [sent for sent in Dataset(parsed_fp).gen_sentences()]
-	standard = [sent for sent in Dataset(standard_fp).gen_sentences()]
+	if type(parsed) is str:
+		parsed = [sent for sent in Dataset(parsed).gen_sentences()]
+	
+	if type(standard) is str:
+		standard = [sent for sent in Dataset(standard).gen_sentences()]
 	
 	if len(parsed) != len(standard):
 		raise ScoreError('The number of sentences differ')

@@ -43,7 +43,8 @@ class Cli:
 		"""
 		def _train(args):
 			from code.main import train
-			train(args.model_file, args.conllu_file, ud_version=args.ud_version)
+			train(args.model_file, args.train_file, dev_fp=args.dev_file,
+					ud_version=args.ud_version, epochs=args.epochs)
 		
 		description = 'train an mstnn model from conllu data'
 		
@@ -53,10 +54,20 @@ class Cli:
 		subp.add_argument('model_file', help=(
 			'path to a file to store the trained model in; '
 			'if it exists, it will be overwritten'))
-		subp.add_argument('conllu_file', help=(
-			'path to the data to train on; '
+		subp.add_argument('train_file', help=(
+			'path to the dataset to train on; '
 			'assumed to be a unicode conllu file'))
 		
+		# subp.add_argument('-k', '--keep', action='store_true', help=(
+		# 	'keep snapshots of the model at the end of each epoch; '
+		# 	'by default these are created during training and then discarded '
+		# 	'apart from the one performing best against the dev dataset'))
+		subp.add_argument('-e', '--epochs', type=int, default=10, help=(
+			'number of epochs to train the model for; '
+			'the default to 10'))
+		subp.add_argument('-d', '--dev-file', help=(
+			'path to a development dataset to fine-tune against; '
+			'assumed to be a unicode conllu file'))
 		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
 			'the UD version to use; either 1 or 2 (the default)'))
 		

@@ -6,25 +6,32 @@ from code.conllu import Dataset
 from code.features import Extractor
 from code.mst import find_mst, Graph
 from code.nn import NeuralNetwork
+from code.score import score
 
 
 
-def train(model_fp, data_fp, ud_version=2):
+def train(model_fp, train_fp, dev_fp=None, ud_version=2, epochs=10):
 	"""
-	Trains an mstnn model. Expects a path where the model will be written to,
-	and a path to a .conllu dataset that will be used for training.
+	Trains an mstnn model. Expects a path where the models will be written to,
+	and a path to a conllu dataset that will be used for training.
 	"""
-	dataset = Dataset(data_fp, ud_version)
+	dataset = Dataset(train_fp, ud_version)
 	
 	extractor = Extractor()
 	extractor.read(dataset)
 	samples, targets = extractor.extract(dataset, include_targets=True)
 	
 	neural_net = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes())
-	neural_net.train(samples, targets,
-		on_epoch_end=lambda epoch, _: save_model(model_fp, extractor, neural_net, epoch))
+	on_epoch_end = lambda epoch, _: save_model(model_fp, extractor, neural_net, epoch)
+	neural_net.train(samples, targets, epochs=epochs, on_epoch_end=on_epoch_end)
 	
-	save_model(model_fp, extractor, neural_net)
+	if dev_fp is not None:
+		for epoch in range(epochs):
+			output_fp = model_fp + '-p{:02}'.format(epoch)
+			parse(model_fp + '-e{:02}'.format(epoch), dev_fp, output_fp)
+			print('epoch {}: {:.2f}'.format(epoch, score(output_fp, dev_fp)))
+	
+	# save_model(model_fp, extractor, neural_net)
 
 
 
