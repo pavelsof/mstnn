@@ -31,6 +31,7 @@ class Cli:
 		self._init_train()
 		self._init_parse()
 		self._init_diff()
+		self._init_score()
 		self._init_unittest()
 	
 	
@@ -138,6 +139,28 @@ class Cli:
 		subp.add_argument('file2', help=('path to another conllu file'))
 		
 		subp.set_defaults(func=_diff)
+	
+	
+	def _init_score(self):
+		"""
+		Inits the subparser that handles the score command. The latter expects
+		two conllu datasets and prints the unlabelled attachment score of the
+		first against the second.
+		"""
+		def _score(args):
+			from code.score import score
+			uas = score(args.parser_output, args.gold_standard)
+			print('{:.2f}'.format(uas))
+		
+		description = 'calculate UAS'
+		
+		subp = self.subparsers.add_parser('score',
+			description=description, help=description)
+		
+		subp.add_argument('parser_output', help=('path to a conllu file'))
+		subp.add_argument('gold_standard', help=('path to another conllu file'))
+		
+		subp.set_defaults(func=_score)
 	
 	
 	def run(self, raw_args=None):
