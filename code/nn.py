@@ -74,8 +74,8 @@ class NeuralNetwork:
 		the nodes' lemmas and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(3,), dtype='uint8')
-		pos_b = Input(shape=(3,), dtype='uint8')
+		pos_a = Input(shape=(5,), dtype='uint8')
+		pos_b = Input(shape=(5,), dtype='uint8')
 		
 		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=3)
 		pos = merge([
