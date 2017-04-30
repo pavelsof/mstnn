@@ -43,8 +43,9 @@ class Cli:
 		"""
 		def _train(args):
 			from code.train import train
-			train(args.model_file, args.train_file, dev_fp=args.dev_file,
-				ud_version=args.ud_version, num_best=args.keep, epochs=args.epochs)
+			train(args.model_file, args.train_file, args.ud_version,
+					args.epochs, args.batch_size,
+					dev_fp=args.dev_file, num_best=args.keep)
 		
 		description = 'train an mstnn model from conllu data'
 		
@@ -60,6 +61,8 @@ class Cli:
 		
 		subp.add_argument('-e', '--epochs', type=int, default=10, help=(
 			'number of training epochs; defaults to 10'))
+		subp.add_argument('-b', '--batch-size', type=int, default=32, help=(
+			'training batch size; defaults to 32'))
 		subp.add_argument('-d', '--dev-file', help=(
 			'path to a development dataset to fine-tune against; '
 			'assumed to be a unicode conllu file'))
