@@ -77,7 +77,7 @@ class NeuralNetwork:
 		pos_a = Input(shape=(5,), dtype='uint8')
 		pos_b = Input(shape=(5,), dtype='uint8')
 		
-		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=3)
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=5)
 		pos = merge([
 			Flatten()(pos_embed(pos_a)),
 			Flatten()(pos_embed(pos_b))], mode='concat')
