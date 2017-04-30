@@ -1,10 +1,11 @@
-import os.path
+import os
+import tempfile
 
 from code.conllu import Dataset
 from code.features import Extractor
 from code.model import Model
 from code.nn import NeuralNetwork
-from code.score import score
+from code.score import Scorer
 
 
 
@@ -64,14 +65,40 @@ class Trainer:
 		if num_best >= len(self.checkpoints):
 			return
 		
+		scorer = Scorer(dataset)
+		scores = {}
+		
+		with tempfile.TemporaryDirectory() as temp_dir:
+			for path in self.checkpoints:
+				parsed = Model.load(path).parse(dataset)
+				
+				output_fp = os.path.join(temp_dir, os.path.basename(path))
+				Dataset(output_fp).write_graphs(parsed)
+				
+				scores[path] = scorer.score(Dataset(output_fp))
+				print('{}: {:.2f}'.format(path, scores[path]))
+		
+		best = [(uas, path) for path, uas in scores.items()]
+		best = sorted(best, reverse=True)[:num_best]
+		best = [item[1] for item in best]
+		
 		for path in self.checkpoints:
-			parsed = Model.load(path).parse(dataset)
-			print('{}: {:.2f}'.format(path, score(parsed, dataset)))
+			if path not in best:
+				os.remove(path)
+		
+		print('kept: {}'.format(', '.join(best)))
 
 
 
 def train(model_fp, train_fp, dev_fp=None, ud_version=2, epochs=10):
 	"""
+	Trains an mstnn model. Expects a path where the models will be written to,
+	and a path to a conllu dataset that will be used for training.
+	
+	The optional path should specify a development dataset to check the trained
+	model against. The UD version would apply to both datasets.
+	
+	This can be seen as the main function of the cli's train command.
 	"""
 	trainer = Trainer(model_fp)
 	trainer.train_on(Dataset(train_fp, ud_version), epochs,

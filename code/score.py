@@ -66,6 +66,9 @@ def score(parsed, standard, ud_version=2):
 	conllu datasets.
 	
 	Could raise a ConlluError or a ScoreError.
+	
+	This can be seen as the main function of the cli's score command; however,
+	it is also used elsewhere in the code.
 	"""
 	parsed = Dataset(parsed, ud_version)
 	standard = Dataset(standard, ud_version)

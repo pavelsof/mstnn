@@ -1,7 +1,7 @@
 """
 Handles the command-line interface, including the help strings. Only the UI is
 done here: as soon as it is clear what the user wants, the respective function
-from code.main is invoked.
+from the rest of the codebase is invoked.
 """
 
 import argparse
@@ -42,7 +42,7 @@ class Cli:
 		the training into.
 		"""
 		def _train(args):
-			from code.main import train
+			from code.train import train
 			train(args.model_file, args.train_file, dev_fp=args.dev_file,
 					ud_version=args.ud_version, epochs=args.epochs)
 		
@@ -81,7 +81,7 @@ class Cli:
 		to write the output to.
 		"""
 		def _parse(args):
-			from code.main import parse
+			from code.model import parse
 			parse(args.model_file, args.conllu_file, args.output_file)
 		
 		description = 'parse conllu data using an mstnn model'

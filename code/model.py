@@ -92,6 +92,11 @@ class Model:
 
 def parse(model_fp, data_fp, output_fp):
 	"""
+	Parses a conllu dataset using a trained mstnn model. Expects the path to a
+	previously trained mstnn model file, the path to the dataset file, and the
+	path where to write the parsed sentences.
+	
+	This can be seen as the main function of the cli's parse command.
 	"""
 	model = Model.load(model_fp)
 	dataset = Dataset(data_fp)
