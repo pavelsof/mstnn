@@ -48,8 +48,8 @@ class Dataset:
 		Constructor. Expects the path to the .conllu dataset file. The latter
 		is not opened until one of the gen_* methods is invoked.
 		
-		The dataset's POS tags and dependency relations are checked against the
-		UD version specified by the keyword argument.
+		The dataset's POS tags are checked against the UD version specified by
+		the keyword argument.
 		"""
 		self.file_path = file_path
 		
@@ -92,7 +92,6 @@ class Dataset:
 		line[6] = int(line[6])
 		
 		assert line[3] in self.POS_TAGS
-		assert line[7] in self.DEP_RELS or line[7].split(':')[0] in self.DEP_RELS
 		
 		if line[5] == '_':
 			line[5] = {}

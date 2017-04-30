@@ -1,3 +1,4 @@
+from keras.callbacks import LambdaCallback
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
@@ -120,14 +121,19 @@ class NeuralNetwork:
 				metrics=['accuracy'])
 	
 	
-	def train(self, samples, targets, epochs=10):
+	def train(self, samples, targets, epochs=10, on_epoch_end=None):
 		"""
 		Trains the network. The first arg should be a dict where the keys are
 		EDGE_FEATURES and the values numpy arrays. The second one should be a
 		single numpy array of 0s and 1s.
 		"""
-		self.model.fit([samples[key] for key in EDGE_FEATURES],
-			targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+		if on_epoch_end:
+			callbacks = [LambdaCallback(on_epoch_end=on_epoch_end)]
+		else:
+			callbacks = []
+		
+		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
+			batch_size=32, shuffle=True, nb_epoch=epochs, callbacks=callbacks)
 	
 	
 	def calc_probs(self, samples):
