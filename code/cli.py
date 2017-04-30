@@ -160,7 +160,7 @@ class Cli:
 		"""
 		def _score(args):
 			from code.score import score
-			uas = score(args.parser_output, args.gold_standard)
+			uas = score(args.parser_output, args.gold_standard, args.ud_version)
 			print('{:.2f}'.format(uas))
 		
 		description = 'calculate UAS'
@@ -170,6 +170,9 @@ class Cli:
 		
 		subp.add_argument('parser_output', help=('path to a conllu file'))
 		subp.add_argument('gold_standard', help=('path to another conllu file'))
+		
+		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
+			'the UD version to use; either 1 or 2 (the default)'))
 		
 		subp.set_defaults(func=_score)
 	
