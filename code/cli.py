@@ -44,7 +44,7 @@ class Cli:
 		def _train(args):
 			from code.train import train
 			train(args.model_file, args.train_file, dev_fp=args.dev_file,
-					ud_version=args.ud_version, epochs=args.epochs)
+				ud_version=args.ud_version, num_best=args.keep, epochs=args.epochs)
 		
 		description = 'train an mstnn model from conllu data'
 		
@@ -58,18 +58,17 @@ class Cli:
 			'path to the dataset to train on; '
 			'assumed to be a unicode conllu file'))
 		
-		# subp.add_argument('-k', '--keep', action='store_true', help=(
-		# 	'keep snapshots of the model at the end of each epoch; '
-		# 	'by default these are created during training and then discarded '
-		# 	'apart from the one performing best against the dev dataset'))
 		subp.add_argument('-e', '--epochs', type=int, default=10, help=(
-			'number of epochs to train the model for; '
-			'the default to 10'))
+			'number of training epochs; defaults to 10'))
 		subp.add_argument('-d', '--dev-file', help=(
 			'path to a development dataset to fine-tune against; '
 			'assumed to be a unicode conllu file'))
+		subp.add_argument('-k', '--keep', type=int, default=1, help=(
+			'number of best performing epoch checkpoints to keep; '
+			'only relevant if a development dataset is set'))
 		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
-			'the UD version to use; either 1 or 2 (the default)'))
+			'the UD version to use; either 1 or 2 (the default); '
+			'also applied to the development dataset, if such'))
 		
 		subp.set_defaults(func=_train)
 	

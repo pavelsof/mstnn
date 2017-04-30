@@ -90,13 +90,15 @@ class Trainer:
 
 
 
-def train(model_fp, train_fp, dev_fp=None, ud_version=2, epochs=10):
+def train(model_fp, train_fp, dev_fp=None, ud_version=2, num_best=1, epochs=10):
 	"""
 	Trains an mstnn model. Expects a path where the models will be written to,
 	and a path to a conllu dataset that will be used for training.
 	
 	The optional path should specify a development dataset to check the trained
-	model against. The UD version would apply to both datasets.
+	model against. The UD version would apply to both datasets. The last
+	keyword argument specifies the number of best performing checkpoints to
+	keep when there is a development dataset to check against.
 	
 	This can be seen as the main function of the cli's train command.
 	"""
@@ -105,4 +107,4 @@ def train(model_fp, train_fp, dev_fp=None, ud_version=2, epochs=10):
 			save_checkpoints=dev_fp is not None)
 	
 	if dev_fp is not None:
-		trainer.pick_best(Dataset(dev_fp, ud_version))
+		trainer.pick_best(Dataset(dev_fp, ud_version), num_best=num_best)
