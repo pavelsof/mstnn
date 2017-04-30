@@ -158,7 +158,7 @@ features and the values are the respective features' possible values.
 [6] http://universaldependencies.org/u/feat/index.html
 """
 MORPH_FEATURES_V1 = {
-	'Animacy': ('Anim', 'Inan ', 'Nhum'),
+	'Animacy': ('Anim', 'Inan', 'Nhum'),
 	'Aspect': ('Imp ', 'Perf', 'Pro', 'Prog'),
 	'Case': ('Abs', 'Acc', 'Erg', 'Nom',
 		'Abe', 'Ben', 'Cau', 'Com', 'Dat', 'Dis',

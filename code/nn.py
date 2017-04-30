@@ -1,9 +1,21 @@
-import itertools
-
+from keras.callbacks import LambdaCallback
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
-import numpy as np
+
+
+"""
+Tuple listing the names of the features that are fed into the network for each
+edge of each sentence graph.
+
+Used as the keys of the samples dict returned by the Extractor.extract method.
+"""
+EDGE_FEATURES = tuple([
+	'pos A',
+	'pos B',
+	'morph A-1', 'morph A', 'morph A+1',
+	'morph B-1', 'morph B', 'morph B+1',
+	'lemma A', 'lemma B', 'B-A'])
 
 
 
@@ -20,6 +32,7 @@ class NeuralNetwork:
 		"""
 		if model is None:
 			assert isinstance(vocab_sizes['lemmas'], int)
+			assert isinstance(vocab_sizes['morph'], int)
 			assert isinstance(vocab_sizes['pos_tags'], int)
 			self._init_model(vocab_sizes)
 		else:
@@ -56,26 +69,34 @@ class NeuralNetwork:
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network consists of four input branches, one handling the edges'
-		POS tags, another handling the morphological features, a third handling
-		the lemmas embeddings, and a fourth handling the relative positions of
-		the input nodes. These branches then are concatenated and go through a
-		standard two-layer perceptron.
+		The network takes as input the POS tags and the morphological features
+		of two nodes and their immediate neighbours (the context), as well as
+		the nodes' lemmas and their relative position to each other, and tries
+		to predict the probability of an edge between the two.
 		"""
-		pos_tag_a = Input(shape=(1,), dtype='int32')
-		pos_tag_b = Input(shape=(1,), dtype='int32')
-		pos_tag_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
-		pos_tags = merge([
-			Flatten()(pos_tag_embed(pos_tag_a)),
-			Flatten()(pos_tag_embed(pos_tag_b))], mode='concat')
+		pos_a = Input(shape=(3,), dtype='uint8')
+		pos_b = Input(shape=(3,), dtype='uint8')
 		
-		feats_a = Input(shape=(104,))
-		feats_b = Input(shape=(104,))
-		feats = merge([feats_a, feats_b], mode='concat')
-		feats = Dense(64, init='uniform', activation='relu')(feats)
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=3)
+		pos = merge([
+			Flatten()(pos_embed(pos_a)),
+			Flatten()(pos_embed(pos_b))], mode='concat')
 		
-		lemma_a = Input(shape=(1,), dtype='int32')
-		lemma_b = Input(shape=(1,), dtype='int32')
+		morph_a = Input(shape=(vocab_sizes['morph'],))
+		morph_a_prev = Input(shape=(vocab_sizes['morph'],))
+		morph_a_next = Input(shape=(vocab_sizes['morph'],))
+		
+		morph_b = Input(shape=(vocab_sizes['morph'],))
+		morph_b_prev = Input(shape=(vocab_sizes['morph'],))
+		morph_b_next = Input(shape=(vocab_sizes['morph'],))
+		
+		morph = merge([
+			morph_a_prev, morph_a, morph_a_next,
+			morph_b_prev, morph_b, morph_b_next], mode='concat')
+		morph = Dense(64, init='uniform', activation='relu')(morph)
+		
+		lemma_a = Input(shape=(1,), dtype='uint16')
+		lemma_b = Input(shape=(1,), dtype='uint16')
 		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
@@ -84,12 +105,15 @@ class NeuralNetwork:
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
-		x = merge([pos_tags, feats, lemmas, rel_pos], mode='concat')
+		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
-		self.model = Model(input=[pos_tag_a, pos_tag_b, feats_a, feats_b,
+		self.model = Model(input=[
+			pos_a, pos_b,
+			morph_a_prev, morph_a, morph_a_next,
+			morph_b_prev, morph_b, morph_b_next,
 			lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
@@ -97,89 +121,26 @@ class NeuralNetwork:
 				metrics=['accuracy'])
 	
 	
-	def train(self, dataset, extractor, epochs=10):
+	def train(self, samples, targets, epochs=10, on_epoch_end=None):
 		"""
-		Expects a conllu.Dataset instance to train on and a features.Extractor
-		instance to extract the feature vectors with.
+		Trains the network. The first arg should be a dict where the keys are
+		EDGE_FEATURES and the values numpy arrays. The second one should be a
+		single numpy array of 0s and 1s.
 		"""
-		pos_tag_a = []
-		pos_tag_b = []
-		feats_a = []
-		feats_b = []
-		lemmas_a = []
-		lemmas_b = []
-		rel_pos = []
+		if on_epoch_end:
+			callbacks = [LambdaCallback(on_epoch_end=on_epoch_end)]
+		else:
+			callbacks = []
 		
-		targets = []
-		
-		for graph in dataset.gen_graphs():
-			edges = graph.edges()
-			for a, b in itertools.permutations(graph.nodes(), 2):
-				pos_tag_a.append(extractor.featurise_pos_tag(graph.node[a]['UPOSTAG']))
-				pos_tag_b.append(extractor.featurise_pos_tag(graph.node[b]['UPOSTAG']))
-				
-				feats_a.append(extractor.featurise_morph(graph.node[a]['FEATS']))
-				feats_b.append(extractor.featurise_morph(graph.node[b]['FEATS']))
-				
-				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
-				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
-				
-				rel_pos.append(b - a)
-				
-				targets.append((a, b) in edges)
-		
-		pos_tag_a = np.array(pos_tag_a)
-		pos_tag_b = np.array(pos_tag_b)
-		feats_a = np.array(feats_a)
-		feats_b = np.array(feats_b)
-		lemmas_a = np.array(lemmas_a)
-		lemmas_b = np.array(lemmas_b)
-		rel_pos = np.array(rel_pos)
-		targets = np.array(targets)
-		
-		self.model.fit([pos_tag_a, pos_tag_b, feats_a, feats_b,
-				lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=128, nb_epoch=epochs, shuffle=True)
+		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
+			batch_size=128, shuffle=True, nb_epoch=epochs, callbacks=callbacks)
 	
 	
-	def calc_probs(self, graph, extractor):
+	def calc_probs(self, samples):
 		"""
-		Calculates the probabilities of each edge.
+		Calculates the probabilities of each edge. The arg should be a dict
+		where the keys are EDGE_FEATURES and the values are the respective
+		numpy arrays.
 		"""
-		scores = {}
-		
-		pos_tag_a = []
-		pos_tag_b = []
-		feats_a = []
-		feats_b = []
-		lemmas_a = []
-		lemmas_b = []
-		rel_pos = []
-		
-		for a, b in itertools.permutations(graph.nodes(), 2):
-			pos_tag_a.append(extractor.featurise_pos_tag(graph.node[a]['UPOSTAG']))
-			pos_tag_b.append(extractor.featurise_pos_tag(graph.node[b]['UPOSTAG']))
-			
-			feats_a.append(extractor.featurise_morph(graph.node[a]['FEATS']))
-			feats_b.append(extractor.featurise_morph(graph.node[b]['FEATS']))
-			
-			lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
-			lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
-			
-			rel_pos.append(b - a)
-		
-		pos_tag_a = np.array(pos_tag_a)
-		pos_tag_b = np.array(pos_tag_b)
-		feats_a = np.array(feats_a)
-		feats_b = np.array(feats_b)
-		lemmas_a = np.array(lemmas_a)
-		lemmas_b = np.array(lemmas_b)
-		rel_pos = np.array(rel_pos)
-		
-		probs = self.model.predict([pos_tag_a, pos_tag_b, feats_a, feats_b,
-				lemmas_a, lemmas_b, rel_pos], verbose=1)
-		
-		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
-			scores[(a, b)] = probs[index][0]
-		
-		return scores
+		return self.model.predict([samples[key] for key in EDGE_FEATURES],
+			batch_size=32, verbose=1)
