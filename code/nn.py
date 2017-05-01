@@ -11,8 +11,7 @@ edge of each sentence graph.
 Used as the keys of the samples dict returned by the Extractor.extract method.
 """
 EDGE_FEATURES = tuple([
-	'pos A',
-	'pos B',
+	'pos',
 	'morph A-1', 'morph A', 'morph A+1',
 	'morph B-1', 'morph B', 'morph B+1',
 	'lemma A', 'lemma B', 'B-A'])
@@ -74,13 +73,9 @@ class NeuralNetwork:
 		the nodes' lemmas and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(5,), dtype='uint8')
-		pos_b = Input(shape=(5,), dtype='uint8')
-		
-		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=5)
-		pos = merge([
-			Flatten()(pos_embed(pos_a)),
-			Flatten()(pos_embed(pos_b))], mode='concat')
+		pos_input = Input(shape=(10,), dtype='uint8')
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=10)
+		pos = Flatten()(pos_embed(pos_input))
 		
 		morph_a = Input(shape=(vocab_sizes['morph'],))
 		morph_a_prev = Input(shape=(vocab_sizes['morph'],))
@@ -111,7 +106,7 @@ class NeuralNetwork:
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			pos_a, pos_b,
+			pos_input,
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next,
 			lemma_a, lemma_b, rel_pos_raw], output=output)
