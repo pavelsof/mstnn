@@ -1,3 +1,4 @@
+from keras.callbacks import LambdaCallback
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
@@ -10,8 +11,8 @@ edge of each sentence graph.
 Used as the keys of the samples dict returned by the Extractor.extract method.
 """
 EDGE_FEATURES = tuple([
-	'pos A-1', 'pos A', 'pos A+1',
-	'pos B-1', 'pos B', 'pos B+1',
+	'pos A',
+	'pos B',
 	'morph A-1', 'morph A', 'morph A+1',
 	'morph B-1', 'morph B', 'morph B+1',
 	'form A', 'form B', 'B-A'])
@@ -73,22 +74,13 @@ class NeuralNetwork:
 		the nodes' forms and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(1,), dtype='uint8')
-		pos_a_prev = Input(shape=(1,), dtype='uint8')
-		pos_a_next = Input(shape=(1,), dtype='uint8')
+		pos_a = Input(shape=(5,), dtype='uint8')
+		pos_b = Input(shape=(5,), dtype='uint8')
 		
-		pos_b = Input(shape=(1,), dtype='uint8')
-		pos_b_prev = Input(shape=(1,), dtype='uint8')
-		pos_b_next = Input(shape=(1,), dtype='uint8')
-		
-		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=5)
 		pos = merge([
-			Flatten()(pos_embed(pos_a_prev)),
 			Flatten()(pos_embed(pos_a)),
-			Flatten()(pos_embed(pos_a_next)),
-			Flatten()(pos_embed(pos_b_prev)),
-			Flatten()(pos_embed(pos_b)),
-			Flatten()(pos_embed(pos_b_next))], mode='concat')
+			Flatten()(pos_embed(pos_b))], mode='concat')
 		
 		morph_a = Input(shape=(vocab_sizes['morph'],))
 		morph_a_prev = Input(shape=(vocab_sizes['morph'],))
@@ -123,8 +115,7 @@ class NeuralNetwork:
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			pos_a_prev, pos_a, pos_a_next,
-			pos_b_prev, pos_b, pos_b_next,
+			pos_a, pos_b,
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next,
 			form_a, form_b, rel_pos_raw], output=output)
@@ -134,14 +125,19 @@ class NeuralNetwork:
 				metrics=['accuracy'])
 	
 	
-	def train(self, samples, targets, epochs=10):
+	def train(self, samples, targets, epochs=10, on_epoch_end=None):
 		"""
 		Trains the network. The first arg should be a dict where the keys are
 		EDGE_FEATURES and the values numpy arrays. The second one should be a
 		single numpy array of 0s and 1s.
 		"""
-		self.model.fit([samples[key] for key in EDGE_FEATURES],
-			targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+		if on_epoch_end:
+			callbacks = [LambdaCallback(on_epoch_end=on_epoch_end)]
+		else:
+			callbacks = []
+		
+		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
+			batch_size=32, shuffle=True, nb_epoch=epochs, callbacks=callbacks)
 	
 	
 	def calc_probs(self, samples):

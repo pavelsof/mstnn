@@ -1,7 +1,7 @@
 """
 Handles the command-line interface, including the help strings. Only the UI is
 done here: as soon as it is clear what the user wants, the respective function
-from code.main is invoked.
+from the rest of the codebase is invoked.
 """
 
 import argparse
@@ -31,6 +31,7 @@ class Cli:
 		self._init_train()
 		self._init_parse()
 		self._init_diff()
+		self._init_score()
 		self._init_unittest()
 	
 	
@@ -41,9 +42,10 @@ class Cli:
 		the training into.
 		"""
 		def _train(args):
-			from code.main import train
-			train(args.model_file, args.conllu_file,
-					ud_version=args.ud_version, embed_fp=args.form_embeddings)
+			from code.train import train
+			train(args.model_file, args.train_file,
+				ud_version=args.ud_version, forms_fp=args.form_embeddings,
+				dev_fp=args.dev_file, num_best=args.keep, epochs=args.epochs)
 		
 		description = 'train an mstnn model from conllu data'
 		
@@ -53,15 +55,24 @@ class Cli:
 		subp.add_argument('model_file', help=(
 			'path to a file to store the trained model in; '
 			'if it exists, it will be overwritten'))
-		subp.add_argument('conllu_file', help=(
-			'path to the data to train on; '
+		subp.add_argument('train_file', help=(
+			'path to the dataset to train on; '
 			'assumed to be a unicode conllu file'))
 		
-		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
-			'the UD version to use; either 1 or 2 (the default)'))
-		subp.add_argument('-e', '--form-embeddings', help=(
+		subp.add_argument('-e', '--epochs', type=int, default=10, help=(
+			'number of training epochs; defaults to 10'))
+		subp.add_argument('-f', '--form-embeddings', help=(
 			'path to pre-trained word form embeddings file; '
 			'the embedding vectors are assumed to be of length 50'))
+		subp.add_argument('-d', '--dev-file', help=(
+			'path to a development dataset to fine-tune against; '
+			'assumed to be a unicode conllu file'))
+		subp.add_argument('-k', '--keep', type=int, default=1, help=(
+			'number of best performing epoch checkpoints to keep; '
+			'only relevant if a development dataset is set'))
+		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
+			'the UD version to use; either 1 or 2 (the default); '
+			'also applied to the development dataset, if such'))
 		
 		subp.set_defaults(func=_train)
 	
@@ -73,7 +84,7 @@ class Cli:
 		to write the output to.
 		"""
 		def _parse(args):
-			from code.main import parse
+			from code.model import parse
 			parse(args.model_file, args.conllu_file, args.output_file)
 		
 		description = 'parse conllu data using an mstnn model'
@@ -142,6 +153,31 @@ class Cli:
 		subp.add_argument('file2', help=('path to another conllu file'))
 		
 		subp.set_defaults(func=_diff)
+	
+	
+	def _init_score(self):
+		"""
+		Inits the subparser that handles the score command. The latter expects
+		two conllu datasets and prints the unlabelled attachment score of the
+		first against the second.
+		"""
+		def _score(args):
+			from code.score import score
+			uas = score(args.parser_output, args.gold_standard, args.ud_version)
+			print('{:.2f}'.format(uas))
+		
+		description = 'calculate UAS'
+		
+		subp = self.subparsers.add_parser('score',
+			description=description, help=description)
+		
+		subp.add_argument('parser_output', help=('path to a conllu file'))
+		subp.add_argument('gold_standard', help=('path to another conllu file'))
+		
+		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
+			'the UD version to use; either 1 or 2 (the default)'))
+		
+		subp.set_defaults(func=_score)
 	
 	
 	def run(self, raw_args=None):
