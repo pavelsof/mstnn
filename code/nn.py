@@ -121,11 +121,17 @@ class NeuralNetwork:
 				metrics=['accuracy'])
 	
 	
-	def train(self, samples, targets, epochs=10, on_epoch_end=None):
+	def train(self, samples, targets, epochs=10, batch_size=32, on_epoch_end=None):
 		"""
 		Trains the network. The first arg should be a dict where the keys are
 		EDGE_FEATURES and the values numpy arrays. The second one should be a
 		single numpy array of 0s and 1s.
+		
+		The batch size and the number of training epochs are directly passed
+		onto the keras model's fit function.
+		
+		The last keyword arg is expected to be a function; this will be invoked
+		at the end of each training epoch with the epoch number as first arg.
 		"""
 		if on_epoch_end:
 			callbacks = [LambdaCallback(on_epoch_end=on_epoch_end)]
@@ -133,7 +139,8 @@ class NeuralNetwork:
 			callbacks = []
 		
 		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
-			batch_size=32, shuffle=True, nb_epoch=epochs, callbacks=callbacks)
+				batch_size=batch_size, shuffle=True,
+				nb_epoch=epochs, callbacks=callbacks)
 	
 	
 	def calc_probs(self, samples):

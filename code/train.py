@@ -32,11 +32,11 @@ class Trainer:
 		self.checkpoints.append(path)
 	
 	
-	def train_on(self, dataset, epochs=10, save_checkpoints=False):
+	def train_on(self, dataset, epochs=10, batch_size=32, save_checkpoints=False):
 		"""
-		Trains an mstnn model for as many epochs on the given conllu.Dataset
-		instance. If the boolean flag is set, a model is saved at the end of
-		each training epoch.
+		Trains an mstnn model on the given Dataset. The training's batch size
+		and number of epochs can be specified as well. If the boolean flag is
+		set, a model is saved at the end of each training epoch.
 		
 		This method could be altered so that it can be called multiple times by
 		initing the extractor and the neural network in the constructor and
@@ -54,7 +54,7 @@ class Trainer:
 		else:
 			func = None
 		
-		ann.train(samples, targets, epochs=epochs, on_epoch_end=func)
+		ann.train(samples, targets, epochs, batch_size, func)
 	
 	
 	def pick_best(self, dataset, num_best=1):
@@ -90,21 +90,21 @@ class Trainer:
 
 
 
-def train(model_fp, train_fp, dev_fp=None, ud_version=2, num_best=1, epochs=10):
+def train(model_fp, train_fp, ud_version=2, epochs=10, batch_size=32, dev_fp=None, num_best=1):
 	"""
 	Trains an mstnn model. Expects a path where the models will be written to,
 	and a path to a conllu dataset that will be used for training.
 	
 	The optional path should specify a development dataset to check the trained
 	model against. The UD version would apply to both datasets. The last
-	keyword argument specifies the number of best performing checkpoints to
-	keep when there is a development dataset to check against.
+	keyword arg specifies the number of best performing checkpoints to keep
+	when there is a development dataset to check against.
 	
 	This can be seen as the main function of the cli's train command.
 	"""
 	trainer = Trainer(model_fp)
-	trainer.train_on(Dataset(train_fp, ud_version), epochs,
-			save_checkpoints=dev_fp is not None)
+	trainer.train_on(Dataset(train_fp, ud_version),
+			epochs, batch_size, save_checkpoints=dev_fp is not None)
 	
 	if dev_fp is not None:
 		trainer.pick_best(Dataset(dev_fp, ud_version), num_best=num_best)
