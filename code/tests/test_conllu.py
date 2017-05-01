@@ -13,7 +13,7 @@ from code.conllu import ConlluError, Word, Dataset
 class DatasetTestCase(TestCase):
 	
 	def setUp(self):
-		self.dataset = Dataset('data/UD_Basque/eu-ud-dev.conllu')
+		self.dataset = Dataset('data/UD_Basque/eu-ud-dev.conllu', ud_version=1)
 	
 	
 	def test_bad_file(self):
@@ -40,6 +40,11 @@ class DatasetTestCase(TestCase):
 		
 		self.assertEqual(len(res[0]), 10)
 		self.assertEqual(len(res[-1]), 25)
+		
+		self.assertEqual(res[0][0], Word._make([
+			1, 'Atenasen', 'Atenas', 'PROPN', '_',
+			{'Case': frozenset(['Ine']), 'Definite': frozenset(['Def']), 'Number': frozenset(['Sing'])},
+			8, 'nmod', '_', '_']))
 	
 	
 	def test_gen_graphs(self):
