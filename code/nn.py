@@ -1,16 +1,26 @@
-import itertools
-import random
-
+from keras.callbacks import LambdaCallback
 from keras.layers import Dense, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
-import numpy as np
+
+
+"""
+Tuple listing the names of the features that are fed into the network for each
+edge of each sentence graph.
+
+Used as the keys of the samples dict returned by the Extractor.extract method.
+"""
+EDGE_FEATURES = tuple([
+	'pos',
+	'morph A-1', 'morph A', 'morph A+1',
+	'morph B-1', 'morph B', 'morph B+1',
+	'lemma A', 'lemma B', 'B-A'])
 
 
 
 class NeuralNetwork:
 	
-	def __init__(self, model=None, vocab_size=None):
+	def __init__(self, model=None, vocab_sizes=None):
 		"""
 		Constructor. The first keyword argument should be a Keras model. If not
 		specified, a new model is created and compiled. In any case, the Keras
@@ -20,8 +30,10 @@ class NeuralNetwork:
 		are ignored otherwise).
 		"""
 		if model is None:
-			assert isinstance(vocab_size, int)
-			self._init_model(vocab_size)
+			assert isinstance(vocab_sizes['lemmas'], int)
+			assert isinstance(vocab_sizes['morph'], int)
+			assert isinstance(vocab_sizes['pos_tags'], int)
+			self._init_model(vocab_sizes)
 		else:
 			self.model = model
 	
@@ -51,23 +63,36 @@ class NeuralNetwork:
 		self.model.save(model_fp, overwrite=True)
 	
 	
-	def _init_model(self, vocab_size):
+	def _init_model(self, vocab_sizes):
 		"""
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
-		The network consists of three input branches, one handling the edges'
-		POS tags and morphological features, another handling the lemmas
-		embeddings, and a third handling the relative positions of the input
-		nodes. These branches then are concatenated and go through a standard
-		two-layer perceptron.
+		The network takes as input the POS tags and the morphological features
+		of two nodes and their immediate neighbours (the context), as well as
+		the nodes' lemmas and their relative position to each other, and tries
+		to predict the probability of an edge between the two.
 		"""
-		grammar_vec = Input(shape=(244,))
-		grammar = Dense(128, init='uniform', activation='relu')(grammar_vec)
+		pos_input = Input(shape=(10,), dtype='uint8')
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=10)
+		pos = Flatten()(pos_embed(pos_input))
 		
-		lemma_a = Input(shape=(1,), dtype='int32')
-		lemma_b = Input(shape=(1,), dtype='int32')
-		lemma_embed = Embedding(vocab_size, 256, input_length=1)
+		morph_a = Input(shape=(vocab_sizes['morph'],))
+		morph_a_prev = Input(shape=(vocab_sizes['morph'],))
+		morph_a_next = Input(shape=(vocab_sizes['morph'],))
+		
+		morph_b = Input(shape=(vocab_sizes['morph'],))
+		morph_b_prev = Input(shape=(vocab_sizes['morph'],))
+		morph_b_next = Input(shape=(vocab_sizes['morph'],))
+		
+		morph = merge([
+			morph_a_prev, morph_a, morph_a_next,
+			morph_b_prev, morph_b, morph_b_next], mode='concat')
+		morph = Dense(64, init='uniform', activation='relu')(morph)
+		
+		lemma_a = Input(shape=(1,), dtype='uint16')
+		lemma_b = Input(shape=(1,), dtype='uint16')
+		lemma_embed = Embedding(vocab_sizes['lemmas'], 64, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
@@ -75,80 +100,49 @@ class NeuralNetwork:
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
 		
-		x = merge([grammar, lemmas, rel_pos], mode='concat')
-		x = Dense(128, init='uniform', activation='relu')(x)
-		x = Dense(128, init='uniform', activation='relu')(x)
+		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
+		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dense(128, init='he_uniform', activation='relu')(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			grammar_vec, lemma_a, lemma_b, rel_pos_raw], output=output)
+			pos_input,
+			morph_a_prev, morph_a, morph_a_next,
+			morph_b_prev, morph_b, morph_b_next,
+			lemma_a, lemma_b, rel_pos_raw], output=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
 				metrics=['accuracy'])
 	
 	
-	def train(self, dataset, extractor, epochs=10):
+	def train(self, samples, targets, epochs=10, batch_size=32, on_epoch_end=None):
 		"""
-		Expects a conllu.Dataset instance to train on and a features.Extractor
-		instance to extract the feature vectors with.
+		Trains the network. The first arg should be a dict where the keys are
+		EDGE_FEATURES and the values numpy arrays. The second one should be a
+		single numpy array of 0s and 1s.
+		
+		The batch size and the number of training epochs are directly passed
+		onto the keras model's fit function.
+		
+		The last keyword arg is expected to be a function; this will be invoked
+		at the end of each training epoch with the epoch number as first arg.
 		"""
-		grammar = []
-		lemmas_a = []
-		lemmas_b = []
-		rel_pos = []
+		if on_epoch_end:
+			callbacks = [LambdaCallback(on_epoch_end=on_epoch_end)]
+		else:
+			callbacks = []
 		
-		targets = []
-		
-		for graph in dataset.gen_graphs():
-			edges = graph.edges()
-			for a, b in itertools.permutations(graph.nodes(), 2):
-				if (a, b) not in edges:
-					if random.random() < 0.5:
-						continue
-				
-				grammar.append(extractor.featurise_edge(graph, (a, b)))
-				lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
-				lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
-				rel_pos.append(b - a)
-				
-				targets.append((a, b) in edges)
-		
-		grammar = np.array(grammar)
-		lemmas_a = np.array(lemmas_a)
-		lemmas_b = np.array(lemmas_b)
-		rel_pos = np.array(rel_pos)
-		targets = np.array(targets)
-		
-		self.model.fit([grammar, lemmas_a, lemmas_b, rel_pos],
-				targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
+				batch_size=batch_size, shuffle=True,
+				nb_epoch=epochs, callbacks=callbacks)
 	
 	
-	def calc_probs(self, graph, extractor):
+	def calc_probs(self, samples):
 		"""
-		Calculates the probabilities of each edge.
+		Calculates the probabilities of each edge. The arg should be a dict
+		where the keys are EDGE_FEATURES and the values are the respective
+		numpy arrays.
 		"""
-		scores = {}
-		
-		grammar = []
-		lemmas_a = []
-		lemmas_b = []
-		rel_pos = []
-		
-		for a, b in itertools.permutations(graph.nodes(), 2):
-			grammar.append(extractor.featurise_edge(graph, (a, b)))
-			lemmas_a.append(extractor.featurise_lemma(graph.node[a]['LEMMA']))
-			lemmas_b.append(extractor.featurise_lemma(graph.node[b]['LEMMA']))
-			rel_pos.append(b - a)
-		
-		grammar = np.array(grammar)
-		lemmas_a = np.array(lemmas_a)
-		lemmas_b = np.array(lemmas_b)
-		rel_pos = np.array(rel_pos)
-		
-		probs = self.model.predict([grammar, lemmas_a, lemmas_b, rel_pos], verbose=1)
-		
-		for index, (a, b) in enumerate(itertools.permutations(graph.nodes(), 2)):
-			scores[(a, b)] = probs[index][0]
-		
-		return scores
+		return self.model.predict([samples[key] for key in EDGE_FEATURES],
+			batch_size=32, verbose=1)

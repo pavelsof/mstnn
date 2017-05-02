@@ -3,17 +3,13 @@ import tempfile
 
 from unittest import TestCase
 
-from hypothesis.strategies import composite, dictionaries, integers
-from hypothesis.strategies import sampled_from, sets, text
+from hypothesis.strategies import composite, sampled_from, sets, text
 from hypothesis import assume, given
 
 import numpy as np
 
-from code.features import Extractor, FeatureError
-
-from code.ud import POS_TAGS_V2 as POS_TAGS
-from code.ud import DEP_RELS_V2 as DEP_RELS
-from code.ud import MORPH_FEATURES_V2 as MORPH_FEATURES
+from code.conllu import Dataset
+from code.features import Extractor
 
 
 
@@ -30,21 +26,41 @@ def subdicts(draw, source_dict):
 
 
 
+dataset = Dataset('data/UD_Basque/eu-ud-dev.conllu', ud_version=1)
+
+extractor = Extractor()
+extractor.read(dataset)
+
+
+
 class FeaturesTestCase(TestCase):
 	
-	def setUp(self):
-		self.ext = Extractor(ud_version=2)
+	def test_read(self):
+		self.assertTrue(isinstance(extractor.pos_tags, tuple))
+		self.assertIn('PROPN', extractor.pos_tags)
+		self.assertIn('CONJ', extractor.pos_tags)
+		
+		self.assertTrue(isinstance(extractor.morph, dict))
+		self.assertIn('Case', extractor.morph)
+		self.assertIn('Definite', extractor.morph)
+		self.assertIn('Number', extractor.morph)
+		
+		self.assertTrue(isinstance(extractor.lemmas, dict))
+		self.assertIn('_', extractor.lemmas)
+		self.assertIn('__root__', extractor.lemmas)
+		self.assertIn('Atenas', extractor.lemmas)
+		self.assertIn('ordea', extractor.lemmas)
 	
 	
 	@given(sets(text()))
 	def test_featurise_lemma(self, lemmas):
 		assume(all([lemma not in ['_', '__root__'] for lemma in lemmas]))
 		
-		extractor = Extractor(ud_version=2)
+		extractor = Extractor()
 		for lemma in lemmas:
 			extractor.lemmas[lemma]
 		
-		self.assertEqual(extractor.get_lemma_vocab_size(), len(lemmas)+2)
+		self.assertEqual(extractor.get_vocab_sizes()['lemmas'], len(lemmas)+2)
 		
 		self.assertEqual(extractor.featurise_lemma('_'), 0)
 		self.assertEqual(extractor.featurise_lemma('__root__'), 1)
@@ -54,66 +70,37 @@ class FeaturesTestCase(TestCase):
 		self.assertTrue(all([number not in [0, 1] for number in res]))
 	
 	
-	@given(sampled_from(POS_TAGS))
+	@given(sampled_from(extractor.pos_tags))
 	def test_featurise_pos_tag(self, pos_tag):
-		res = self.ext.featurise_pos_tag(pos_tag)
-		self.assertTrue(isinstance(res, np.ndarray))
-		self.assertEqual(len(res), len(POS_TAGS))
-		self.assertTrue(all([i == 0 or i == 1 for i in res]))
+		res = extractor.featurise_pos_tag(pos_tag)
+		self.assertTrue(isinstance(res, int))
+		self.assertTrue(res > 0)
+		self.assertTrue(res <= len(extractor.pos_tags))
 	
 	
-	@given(sampled_from(DEP_RELS))
-	def test_featurise_dep_rel(self, dep_rel):
-		res = self.ext.featurise_dep_rel(dep_rel)
-		self.assertTrue(isinstance(res, np.ndarray))
-		self.assertEqual(len(res), len(DEP_RELS))
-		self.assertTrue(all([i == 0 or i == 1 for i in res]))
-	
-	
-	@given(subdicts(MORPH_FEATURES))
+	@given(subdicts(extractor.morph))
 	def test_featurise_morph(self, subdict):
-		if subdict:
-			string = '|'.join([
-				'{}={}'.format(key, ','.join(values))
-				for key, values in subdict.items()])
-		else:
-			string = '_'
-		
-		res = self.ext.featurise_morph(string)
+		res = extractor.featurise_morph(subdict)
 		
 		self.assertTrue(isinstance(res, np.ndarray))
 		self.assertEqual(len(res),
-			sum([len(value) for value in MORPH_FEATURES.values()]))
+			sum([len(value) for value in extractor.morph.values()]))
 		
 		self.assertTrue(all([i == 0 or i == 1 for i in res]))
 		self.assertEqual(len([i for i in res if i == 1]),
 			sum([len(value) for value in subdict.values()]))
 	
 	
-	def test_feature_error(self):
-		with self.assertRaises(FeatureError):
-			self.ext.featurise_pos_tag('_')
-		
-		with self.assertRaises(FeatureError):
-			self.ext.featurise_dep_rel('_')
-		
-		with self.assertRaises(FeatureError):
-			self.ext.featurise_morph('')
-	
-	
-	@given(dictionaries(text(), integers()))
-	def test_model_files(self, lemmas):
-		for key, value in lemmas.items():
-			self.ext.lemmas[key] = value
-		
+	def test_model_files(self):
 		with tempfile.TemporaryDirectory() as temp_dir:
 			path = os.path.join(temp_dir, 'model')
-			self.ext.write_to_model_file(path)
+			extractor.write_to_model_file(path)
 			new_ext = Extractor.create_from_model_file(path)
 		
 		self.assertTrue(isinstance(new_ext, Extractor))
-		self.assertEqual(new_ext.ud_version, self.ext.ud_version)
-		self.assertEqual(new_ext.lemmas, self.ext.lemmas)
+		self.assertEqual(new_ext.lemmas, extractor.lemmas)
+		self.assertEqual(new_ext.morph, extractor.morph)
+		self.assertEqual(new_ext.pos_tags, extractor.pos_tags)
 	
 	
 	def test_model_files_error(self):
@@ -131,4 +118,4 @@ class FeaturesTestCase(TestCase):
 		assert not os.path.exists(temp_dir)
 		
 		with self.assertRaises(OSError):
-			self.ext.write_to_model_file(path)
+			extractor.write_to_model_file(path)
