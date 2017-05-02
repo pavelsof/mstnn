@@ -1,5 +1,5 @@
 from keras.callbacks import LambdaCallback
-from keras.layers import Dense, Embedding, Flatten, Input, merge
+from keras.layers import Dense, Dropout, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
 
@@ -102,7 +102,9 @@ class NeuralNetwork:
 		
 		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dropout(0.25)(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dropout(0.25)(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
