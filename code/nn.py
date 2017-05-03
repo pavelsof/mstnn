@@ -1,5 +1,6 @@
 from keras.callbacks import LambdaCallback
-from keras.layers import Dense, Dropout, Embedding, Flatten, Input, merge
+from keras.layers import Dense, Dropout, Embedding, Flatten, Input
+from keras.layers import concatenate
 from keras.models import load_model, Model
 
 
@@ -85,33 +86,38 @@ class NeuralNetwork:
 		morph_b_prev = Input(shape=(vocab_sizes['morph'],))
 		morph_b_next = Input(shape=(vocab_sizes['morph'],))
 		
-		morph = merge([
+		morph = concatenate([
 			morph_a_prev, morph_a, morph_a_next,
-			morph_b_prev, morph_b, morph_b_next], mode='concat')
-		morph = Dense(64, init='uniform', activation='relu')(morph)
+			morph_b_prev, morph_b, morph_b_next])
+		morph = Dense(64, activation='relu',
+				kernel_initializer='he_uniform', bias_initializer='ones')(morph)
 		
 		lemma_a = Input(shape=(1,), dtype='uint16')
 		lemma_b = Input(shape=(1,), dtype='uint16')
 		lemma_embed = Embedding(vocab_sizes['lemmas'], 64, input_length=1)
-		lemmas = merge([
+		lemmas = concatenate([
 			Flatten()(lemma_embed(lemma_a)),
-			Flatten()(lemma_embed(lemma_b))], mode='concat')
+			Flatten()(lemma_embed(lemma_b))])
 		
 		rel_pos_raw = Input(shape=(1,))
-		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
+		rel_pos = Dense(32, activation='relu',
+				kernel_initializer='he_uniform', bias_initializer='ones')(rel_pos_raw)
 		
-		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
-		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = concatenate([pos, morph, lemmas, rel_pos])
+		x = Dense(128, activation='relu',
+				kernel_initializer='he_uniform', bias_initializer='ones')(x)
 		x = Dropout(0.25)(x)
-		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dense(128, activation='relu',
+				kernel_initializer='he_uniform', bias_initializer='ones')(x)
 		x = Dropout(0.25)(x)
-		output = Dense(1, init='uniform', activation='sigmoid')(x)
+		output = Dense(1, activation='sigmoid',
+				kernel_initializer='he_uniform')(x)
 		
-		self.model = Model(input=[
+		self.model = Model(inputs=[
 			pos_input,
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next,
-			lemma_a, lemma_b, rel_pos_raw], output=output)
+			lemma_a, lemma_b, rel_pos_raw], outputs=output)
 		
 		self.model.compile(optimizer='sgd',
 				loss='binary_crossentropy',
@@ -137,7 +143,7 @@ class NeuralNetwork:
 		
 		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
 				batch_size=batch_size, shuffle=True,
-				nb_epoch=epochs, callbacks=callbacks)
+				epochs=epochs, callbacks=callbacks)
 	
 	
 	def calc_probs(self, samples):
