@@ -100,16 +100,21 @@ class Extractor:
 		Reads the data provided by the given conllu.Dataset instance and
 		populates self.pos_tag, self.morph, and self.lemmas.
 		"""
+		lemma_counts = defaultdict(lambda: 0)
 		pos_tags = set(self.pos_tags)
 		morph = defaultdict(set)
 		
 		for sent in dataset.gen_sentences():
 			for word in sent:
 				pos_tags.add(word.UPOSTAG)
-				self.lemmas[word.LEMMA]
+				lemma_counts[word.LEMMA] += 1
 				for key, values in word.FEATS.items():
 					for value in values:
 						morph[key].add(value)
+		
+		for lemma, count in lemma_counts.items():
+			if count > 1:
+				self.lemmas[lemma]
 		
 		self.pos_tags = tuple(sorted(pos_tags))
 		self.morph = {key: tuple(sorted(value)) for key, value in morph.items()}
