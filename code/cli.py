@@ -141,7 +141,8 @@ class Cli:
 		"""
 		def _diff(args):
 			from code.diff import diff
-			diff(args.file1, args.file2)
+			out = diff(args.file1, args.file2, ud_version=args.ud_version)
+			if out: print(out)
 		
 		description = 'print the differences between two conllu files'
 		
@@ -150,6 +151,9 @@ class Cli:
 		
 		subp.add_argument('file1', help=('path to a conllu file'))
 		subp.add_argument('file2', help=('path to another conllu file'))
+		
+		subp.add_argument('-u', '--ud-version', type=int, default=2, help=(
+			'the UD version to use; either 1 or 2 (the default)'))
 		
 		subp.set_defaults(func=_diff)
 	

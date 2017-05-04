@@ -119,7 +119,9 @@ class Dataset:
 						continue
 					
 					elif line:
-						sent.append(self._read_word(line.split('\t')))
+						word = self._read_word(line.split('\t'))
+						if word:
+							sent.append(word)
 					
 					else:  # empty lines mark sentence boundaries
 						yield tuple(sent)
@@ -154,9 +156,15 @@ class Dataset:
 			graph.add_node(0, UPOSTAG='ROOT', FEATS='_', LEMMA='__root__')
 			
 			for word in sent:
-				graph.add_node(word.ID,
-					FORM=word.FORM, LEMMA=word.LEMMA,
-					UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
+				try:
+					graph.add_node(word.ID,
+						FORM=word.FORM, LEMMA=word.LEMMA,
+						UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
+				except Exception as err:
+					for i, w in enumerate(sent):
+						if w is None:
+							print(i)
+					raise
 				graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
 			
 			yield graph
