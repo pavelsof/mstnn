@@ -113,7 +113,7 @@ class NeuralNetwork:
 			morph_b_prev, morph_b, morph_b_next,
 			lemma_a, lemma_b, rel_pos_raw], output=output)
 		
-		self.model.compile(optimizer='sgd',
+		self.model.compile(optimizer='adamax',
 				loss='binary_crossentropy',
 				metrics=['accuracy'])
 	
