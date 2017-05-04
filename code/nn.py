@@ -1,4 +1,5 @@
-from keras.layers import Dense, Embedding, Flatten, Input, merge
+from keras.callbacks import LambdaCallback
+from keras.layers import Dense, Dropout, Embedding, Flatten, Input, merge
 from keras.models import load_model, Model
 
 
@@ -10,8 +11,7 @@ edge of each sentence graph.
 Used as the keys of the samples dict returned by the Extractor.extract method.
 """
 EDGE_FEATURES = tuple([
-	'pos A-1', 'pos A', 'pos A+1',
-	'pos B-1', 'pos B', 'pos B+1',
+	'pos',
 	'morph A-1', 'morph A', 'morph A+1',
 	'morph B-1', 'morph B', 'morph B+1',
 	'lemma A', 'lemma B', 'B-A'])
@@ -73,22 +73,9 @@ class NeuralNetwork:
 		the nodes' lemmas and their relative position to each other, and tries
 		to predict the probability of an edge between the two.
 		"""
-		pos_a = Input(shape=(1,), dtype='uint8')
-		pos_a_prev = Input(shape=(1,), dtype='uint8')
-		pos_a_next = Input(shape=(1,), dtype='uint8')
-		
-		pos_b = Input(shape=(1,), dtype='uint8')
-		pos_b_prev = Input(shape=(1,), dtype='uint8')
-		pos_b_next = Input(shape=(1,), dtype='uint8')
-		
-		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=1)
-		pos = merge([
-			Flatten()(pos_embed(pos_a_prev)),
-			Flatten()(pos_embed(pos_a)),
-			Flatten()(pos_embed(pos_a_next)),
-			Flatten()(pos_embed(pos_b_prev)),
-			Flatten()(pos_embed(pos_b)),
-			Flatten()(pos_embed(pos_b_next))], mode='concat')
+		pos_input = Input(shape=(10,), dtype='uint8')
+		pos_embed = Embedding(vocab_sizes['pos_tags'], 32, input_length=10)
+		pos = Flatten()(pos_embed(pos_input))
 		
 		morph_a = Input(shape=(vocab_sizes['morph'],))
 		morph_a_prev = Input(shape=(vocab_sizes['morph'],))
@@ -105,7 +92,7 @@ class NeuralNetwork:
 		
 		lemma_a = Input(shape=(1,), dtype='uint16')
 		lemma_b = Input(shape=(1,), dtype='uint16')
-		lemma_embed = Embedding(vocab_sizes['lemmas'], 256, input_length=1)
+		lemma_embed = Embedding(vocab_sizes['lemmas'], 64, input_length=1)
 		lemmas = merge([
 			Flatten()(lemma_embed(lemma_a)),
 			Flatten()(lemma_embed(lemma_b))], mode='concat')
@@ -115,29 +102,42 @@ class NeuralNetwork:
 		
 		x = merge([pos, morph, lemmas, rel_pos], mode='concat')
 		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dropout(0.25)(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dropout(0.25)(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=[
-			pos_a_prev, pos_a, pos_a_next,
-			pos_b_prev, pos_b, pos_b_next,
+			pos_input,
 			morph_a_prev, morph_a, morph_a_next,
 			morph_b_prev, morph_b, morph_b_next,
 			lemma_a, lemma_b, rel_pos_raw], output=output)
 		
-		self.model.compile(optimizer='sgd',
+		self.model.compile(optimizer='adamax',
 				loss='binary_crossentropy',
 				metrics=['accuracy'])
 	
 	
-	def train(self, samples, targets, epochs=10):
+	def train(self, samples, targets, epochs=10, batch_size=32, on_epoch_end=None):
 		"""
 		Trains the network. The first arg should be a dict where the keys are
 		EDGE_FEATURES and the values numpy arrays. The second one should be a
 		single numpy array of 0s and 1s.
+		
+		The batch size and the number of training epochs are directly passed
+		onto the keras model's fit function.
+		
+		The last keyword arg is expected to be a function; this will be invoked
+		at the end of each training epoch with the epoch number as first arg.
 		"""
-		self.model.fit([samples[key] for key in EDGE_FEATURES],
-			targets, batch_size=32, nb_epoch=epochs, shuffle=True)
+		if on_epoch_end:
+			callbacks = [LambdaCallback(on_epoch_end=on_epoch_end)]
+		else:
+			callbacks = []
+		
+		self.model.fit([samples[key] for key in EDGE_FEATURES], targets,
+				batch_size=batch_size, shuffle=True,
+				nb_epoch=epochs, callbacks=callbacks)
 	
 	
 	def calc_probs(self, samples):
