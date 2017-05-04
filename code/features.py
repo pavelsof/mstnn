@@ -26,10 +26,13 @@ class Extractor:
 	possibly the targets) to be fed into the neural network.
 	"""
 	
-	def __init__(self):
+	def __init__(self, ignore_lemmas=False, ignore_morph=False):
 		"""
-		Constructor. The pos_tags tuple lists all the possible POS tags that a
-		node could belong to.
+		Constructor. The boolean flags could be used to disable the extraction
+		of certain features.
+		
+		The pos_tags tuple lists all the possible POS tags that a node could
+		belong to.
 		
 		The morph dict comprises the morphological features, both keys and
 		values, found in the dataset during the reading phase.
@@ -39,6 +42,9 @@ class Extractor:
 		the underscore. ID 1 is used for the non-standard root node lemma
 		(__root__).
 		"""
+		self.ignore_lemmas = ignore_lemmas
+		self.ignore_morph = ignore_morph
+		
 		self.pos_tags = ('ROOT',)  # tuple of possible pos tags
 		
 		self.morph = {}  # key: tuple of possible values
@@ -63,9 +69,12 @@ class Extractor:
 		morph = json.loads(f['extractor'].attrs['morph'])
 		lemmas = json.loads(f['extractor'].attrs['lemmas'])
 		
+		ignore_lemmas = json.loads(f['extractor'].attrs['ignore_lemmas'])
+		ignore_morph = json.loads(f['extractor'].attrs['ignore_morph'])
+		
 		f.close()
 		
-		extractor = Extractor()
+		extractor = Extractor(ignore_lemmas, ignore_morph)
 		
 		for key, value in lemmas.items():
 			extractor.lemmas[key] = value
@@ -87,9 +96,13 @@ class Extractor:
 		f = h5py.File(model_fp, 'a')
 		
 		group = f.create_group('extractor')
+		
 		group.attrs['lemmas'] = json.dumps(dict(self.lemmas), ensure_ascii=False)
 		group.attrs['morph'] = json.dumps(dict(self.morph), ensure_ascii=False)
 		group.attrs['pos_tags'] = json.dumps(list(self.pos_tags), ensure_ascii=False)
+		
+		group.attrs['ignore_lemmas'] = json.dumps(self.ignore_lemmas, ensure_ascii=False)
+		group.attrs['ignore_morph'] = json.dumps(self.ignore_morph, ensure_ascii=False)
 		
 		f.flush()
 		f.close()
@@ -112,12 +125,15 @@ class Extractor:
 					for value in values:
 						morph[key].add(value)
 		
-		for lemma, count in lemma_counts.items():
-			if count > 1:
-				self.lemmas[lemma]
+		if not self.ignore_lemmas:
+			for lemma, count in lemma_counts.items():
+				if count > 1:
+					self.lemmas[lemma]
 		
 		self.pos_tags = tuple(sorted(pos_tags))
-		self.morph = {key: tuple(sorted(value)) for key, value in morph.items()}
+		
+		if not self.ignore_morph:
+			self.morph = {key: tuple(sorted(value)) for key, value in morph.items()}
 	
 	
 	def get_vocab_sizes(self):
@@ -135,7 +151,7 @@ class Extractor:
 		morph_size = sum([len(value) for value in self.morph.values()])
 		
 		return {
-			'lemmas': len(self.lemmas),
+			'lemmas': 0 if self.ignore_lemmas else len(self.lemmas),
 			'morph': morph_size,
 			'pos_tags': len(self.pos_tags) + 1}
 	
@@ -189,15 +205,21 @@ class Extractor:
 	def extract(self, dataset, include_targets=False):
 		"""
 		Extracts and returns the samples, and possibly also the targets, from
-		the given conllu.Dataset instance.
+		the given Dataset instance.
 		
 		Assumes that the latter is already read, i.e. this Extractor instance
-		has already populated its self.lemmas dict.
+		has already populated its pos_tags, lemmas, and morph properties.
 		
 		The samples comprise a dict where the keys are nn.EDGE_FEATURES and the
 		values are numpy arrays. The targets are a numpy array of 0s and 1s.
 		"""
-		samples = {key: [] for key in EDGE_FEATURES}
+		keys = list(EDGE_FEATURES)
+		if self.ignore_lemmas:
+			keys = itertools.filterfalse(lambda x: x.startswith('lemma'), keys)
+		if self.ignore_morph:
+			keys = itertools.filterfalse(lambda x: x.startswith('morph'), keys)
+		
+		samples = {key: [] for key in keys}
 		targets = []
 		
 		for graph in dataset.gen_graphs():
@@ -210,27 +232,31 @@ class Extractor:
 			pos_tags[len(nodes)] = 0
 			pos_tags[len(nodes)+1] = 0
 			
-			morph = {i: self.featurise_morph(graph.node[i]['FEATS']) for i in nodes}
-			morph[-1] = self.featurise_morph('_')
-			morph[len(nodes)] = self.featurise_morph('_')
+			if not self.ignore_morph:
+				morph = {i: self.featurise_morph(graph.node[i]['FEATS']) for i in nodes}
+				morph[-1] = self.featurise_morph('_')
+				morph[len(nodes)] = self.featurise_morph('_')
 			
-			lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
+			if not self.ignore_lemmas:
+				lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
 			
 			for a, b in itertools.permutations(nodes, 2):
 				samples['pos'].append([
 					pos_tags[a-2], pos_tags[a-1], pos_tags[a], pos_tags[a+1], pos_tags[a+2],
 					pos_tags[b-2], pos_tags[b-1], pos_tags[b], pos_tags[b+1], pos_tags[b+2]])
 				
-				samples['morph A-1'].append(morph[a-1])
-				samples['morph A'].append(morph[a])
-				samples['morph A+1'].append(morph[a+1])
+				if not self.ignore_morph:
+					samples['morph A-1'].append(morph[a-1])
+					samples['morph A'].append(morph[a])
+					samples['morph A+1'].append(morph[a+1])
+					
+					samples['morph B-1'].append(morph[b-1])
+					samples['morph B'].append(morph[b])
+					samples['morph B+1'].append(morph[b+1])
 				
-				samples['morph B-1'].append(morph[b-1])
-				samples['morph B'].append(morph[b])
-				samples['morph B+1'].append(morph[b+1])
-				
-				samples['lemma A'].append(lemmas[a])
-				samples['lemma B'].append(lemmas[b])
+				if not self.ignore_lemmas:
+					samples['lemma A'].append(lemmas[a])
+					samples['lemma B'].append(lemmas[b])
 				
 				samples['B-A'].append(b-a)
 				

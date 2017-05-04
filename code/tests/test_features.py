@@ -98,9 +98,13 @@ class FeaturesTestCase(TestCase):
 			new_ext = Extractor.create_from_model_file(path)
 		
 		self.assertTrue(isinstance(new_ext, Extractor))
+		
 		self.assertEqual(new_ext.lemmas, extractor.lemmas)
 		self.assertEqual(new_ext.morph, extractor.morph)
 		self.assertEqual(new_ext.pos_tags, extractor.pos_tags)
+		
+		self.assertFalse(new_ext.ignore_lemmas)
+		self.assertFalse(new_ext.ignore_morph)
 	
 	
 	def test_model_files_error(self):
