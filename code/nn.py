@@ -14,7 +14,7 @@ EDGE_FEATURES = tuple([
 	'pos',
 	'morph A-1', 'morph A', 'morph A+1',
 	'morph B-1', 'morph B', 'morph B+1',
-	'lemma A', 'lemma B', 'form A', 'form B', 'B-A'])
+	'lemmas', 'forms', 'B-A'])
 
 
 
@@ -104,29 +104,21 @@ class NeuralNetwork:
 			input_branches.append(morph)
 		
 		if vocab_sizes['lemmas']:
-			lemma_a = Input(shape=(1,), dtype='uint16')
-			lemma_b = Input(shape=(1,), dtype='uint16')
-			lemma_embed = Embedding(vocab_sizes['lemmas'], 32, input_length=1,
+			lemma_input = Input(shape=(2,), dtype='uint16')
+			lemma_embed = Embedding(vocab_sizes['lemmas'], 32, input_length=2,
 				weights=None if lemmas_weights is None else [lemmas_weights])
+			lemmas = Flatten()(lemma_embed(lemma_input))
 			
-			lemmas = merge([
-				Flatten()(lemma_embed(lemma_a)),
-				Flatten()(lemma_embed(lemma_b))], mode='concat')
-			
-			inputs.extend([lemma_a, lemma_b])
+			inputs.append(lemma_input)
 			input_branches.append(lemmas)
 		
 		if vocab_sizes['forms']:
-			form_a = Input(shape=(1,), dtype='uint16')
-			form_b = Input(shape=(1,), dtype='uint16')
-			form_embed = Embedding(vocab_sizes['forms'], 32, input_length=1,
+			form_input = Input(shape=(2,), dtype='uint16')
+			form_embed = Embedding(vocab_sizes['forms'], 32, input_length=2,
 				weights=None if forms_weights is None else [forms_weights])
+			forms = Flatten()(form_embed(form_input))
 			
-			forms = merge([
-				Flatten()(form_embed(form_a)),
-				Flatten()(form_embed(form_b))], mode='concat')
-			
-			inputs.extend([form_a, form_b])
+			inputs.append(form_input)
 			input_branches.append(forms)
 		
 		rel_pos_raw = Input(shape=(1,))

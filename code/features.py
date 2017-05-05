@@ -248,9 +248,9 @@ class Extractor:
 		"""
 		keys = list(EDGE_FEATURES)
 		if self.ignore_forms:
-			keys = itertools.filterfalse(lambda x: x.startswith('form'), keys)
+			keys.remove('forms')
 		if self.ignore_lemmas:
-			keys = itertools.filterfalse(lambda x: x.startswith('lemma'), keys)
+			keys.remove('lemmas')
 		if self.ignore_morph:
 			keys = itertools.filterfalse(lambda x: x.startswith('morph'), keys)
 		
@@ -282,12 +282,10 @@ class Extractor:
 				samples['B-A'].append(b-a)
 				
 				if not self.ignore_forms:
-					samples['form A'].append(forms[a])
-					samples['form B'].append(forms[b])
+					samples['forms'].append([forms[a], forms[b]])
 				
 				if not self.ignore_lemmas:
-					samples['lemma A'].append(lemmas[a])
-					samples['lemma B'].append(lemmas[b])
+					samples['lemmas'].append([lemmas[a], lemmas[b]])
 				
 				samples['pos'].append([
 					pos_tags[a-2], pos_tags[a-1], pos_tags[a], pos_tags[a+1], pos_tags[a+2],
@@ -307,7 +305,7 @@ class Extractor:
 		
 		samples_ = {}
 		for key, value in samples.items():
-			if key.startswith('lemma') or key.startswith('form'):
+			if key in ['forms', 'lemmas']:
 				samples_[key] = np.array(value, dtype='uint16')
 			else:
 				samples_[key] = np.array(value, dtype='uint8')
