@@ -47,14 +47,14 @@ class FeaturesTestCase(TestCase):
 		
 		self.assertTrue(isinstance(extractor.lemmas, dict))
 		self.assertIn('_', extractor.lemmas)
-		self.assertIn('__root__', extractor.lemmas)
+		self.assertIn('\xa0', extractor.lemmas)
 		self.assertIn('Atenas', extractor.lemmas)
 		self.assertIn('ordea', extractor.lemmas)
 	
 	
 	@given(sets(text()))
 	def test_featurise_lemma(self, lemmas):
-		assume(all([lemma not in ['_', '__root__'] for lemma in lemmas]))
+		assume(all([lemma not in ['_', '\xa0'] for lemma in lemmas]))
 		
 		extractor = Extractor()
 		for lemma in lemmas:
@@ -63,7 +63,7 @@ class FeaturesTestCase(TestCase):
 		self.assertEqual(extractor.get_vocab_sizes()['lemmas'], len(lemmas)+2)
 		
 		self.assertEqual(extractor.featurise_lemma('_'), 0)
-		self.assertEqual(extractor.featurise_lemma('__root__'), 1)
+		self.assertEqual(extractor.featurise_lemma('\xa0'), 1)
 		
 		res = [extractor.featurise_lemma(lemma) for lemma in lemmas]
 		self.assertEqual(len(res), len(lemmas))

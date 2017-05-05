@@ -52,12 +52,12 @@ class Trainer:
 		
 		if forms_vecs:
 			assert '_' in forms_vecs
-			assert '</s>' in forms_vecs
+			assert '\xa0' in forms_vecs
 			extractor.forms = {form: index
 						for index, form in enumerate(forms_vecs.index2word)}
 		if lemmas_vecs:
 			assert '_' in lemmas_vecs
-			assert '</s>' in lemmas_vecs
+			assert '\xa0' in lemmas_vecs
 			extractor.lemmas = {lemma: index
 						for index, lemma in enumerate(lemmas_vecs.index2word)}
 		

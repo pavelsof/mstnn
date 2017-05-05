@@ -48,11 +48,11 @@ class Extractor:
 		
 		self.forms = defaultdict(lambda: len(self.forms))
 		self.forms['_']  # unknown
-		self.forms['</s>']  # root
+		self.forms['\xa0']  # root
 		
 		self.lemmas = defaultdict(lambda: len(self.lemmas))
 		self.lemmas['_']  # unknown
-		self.lemmas['</s>']  # root
+		self.lemmas['\xa0']  # root
 		
 		self.pos_tags = ('ROOT',)  # tuple of possible pos tags
 		
