@@ -134,10 +134,10 @@ class Dataset:
 			raise ConlluError('Could not read {}:{}'.format(self.file_path, line_num))
 	
 	
-	def gen_graphs(self):
+	def gen_graphs(self, edgeless=False):
 		"""
 		Generator that yields a nx.DiGraph instance for each sentence in the
-		dataset.
+		dataset. If the flag is set to True, the graph will have only nodes.
 		
 		The graph nodes are the indices (0 being the root) of the respective
 		words; FORM, LEMMA, UPOSTAG, and FEATS are stored as node attributes.
@@ -156,16 +156,11 @@ class Dataset:
 			graph.add_node(0, UPOSTAG='ROOT', FEATS='_', LEMMA='__root__')
 			
 			for word in sent:
-				try:
-					graph.add_node(word.ID,
-						FORM=word.FORM, LEMMA=word.LEMMA,
-						UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
-				except Exception as err:
-					for i, w in enumerate(sent):
-						if w is None:
-							print(i)
-					raise
-				graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
+				graph.add_node(word.ID,
+					FORM=word.FORM, LEMMA=word.LEMMA,
+					UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
+				if not edgeless:
+					graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
 			
 			yield graph
 	

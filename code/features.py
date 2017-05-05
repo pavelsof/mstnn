@@ -69,8 +69,12 @@ class Extractor:
 		morph = json.loads(f['extractor'].attrs['morph'])
 		lemmas = json.loads(f['extractor'].attrs['lemmas'])
 		
-		ignore_lemmas = json.loads(f['extractor'].attrs['ignore_lemmas'])
-		ignore_morph = json.loads(f['extractor'].attrs['ignore_morph'])
+		try:
+			ignore_lemmas = json.loads(f['extractor'].attrs['ignore_lemmas'])
+			ignore_morph = json.loads(f['extractor'].attrs['ignore_morph'])
+		except KeyError:  # ensure compatibility with older models
+			ignore_lemmas = False
+			ignore_morph = False
 		
 		f.close()
 		

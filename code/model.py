@@ -69,7 +69,7 @@ class Model:
 		parsed = []
 		count = 0
 		
-		for edgeless_graph in dataset.gen_graphs():
+		for edgeless_graph in dataset.gen_graphs(edgeless=True):
 			nodes = edgeless_graph.nodes()
 			scores = {}
 			
