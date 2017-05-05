@@ -48,8 +48,8 @@ class Dataset:
 		Constructor. Expects the path to the .conllu dataset file. The latter
 		is not opened until one of the gen_* methods is invoked.
 		
-		The dataset's POS tags are checked against the UD version specified by
-		the keyword argument.
+		The dataset's POS tags and deprels are checked against the UD version
+		specified by the keyword argument.
 		"""
 		self.file_path = file_path
 		
@@ -90,8 +90,10 @@ class Dataset:
 		
 		line[0] = int(line[0])
 		line[6] = int(line[6])
+		line[7] = line[7].split(':')[0]
 		
 		assert line[3] in self.POS_TAGS
+		assert line[7] in self.DEP_RELS or line[7] == '_'
 		
 		if line[5] == '_':
 			line[5] = {}
@@ -131,7 +133,7 @@ class Dataset:
 			raise ConlluError('Could not open {}'.format(self.file_path))
 		
 		except (AssertionError, ValueError):
-			raise ConlluError('Could not read {}:{}'.format(self.file_path, line_num))
+			raise ConlluError('Could not read {}:{}'.format(self.file_path, line_num+1))
 	
 	
 	def gen_graphs(self, edgeless=False):
