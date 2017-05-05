@@ -46,7 +46,8 @@ class Cli:
 			train(args.model_file, args.train_file, args.ud_version,
 					args.ignore_forms, args.ignore_lemmas, args.ignore_morph,
 					args.epochs, args.batch_size,
-					dev_fp=args.dev_file, num_best=args.keep)
+					args.dev_file, args.keep,
+					args.forms_word2vec, args.lemmas_word2vec)
 		
 		description = 'train an mstnn model from conllu data'
 		
@@ -80,6 +81,13 @@ class Cli:
 			'do not use lemmas in the model'))
 		subp.add_argument('--ignore-morph', action='store_true', help=(
 			'do not use morphological features in the model'))
+		
+		subp.add_argument('-f', '--forms-word2vec', help=(
+			'path to a word2vec binary file that contains '
+			'pre-trained word form embeddings'))
+		subp.add_argument('-l', '--lemmas-word2vec', help=(
+			'path to a word2vec binary file that contains '
+			'pre-trained lemmas embeddings'))
 		
 		subp.set_defaults(func=_train)
 	

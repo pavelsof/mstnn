@@ -20,7 +20,7 @@ EDGE_FEATURES = tuple([
 
 class NeuralNetwork:
 	
-	def __init__(self, model=None, vocab_sizes=None):
+	def __init__(self, model=None, vocab_sizes=None, forms_weights=None, lemmas_weights=None):
 		"""
 		Constructor. The first keyword argument should be a Keras model. If not
 		specified, a new model is created and compiled. In any case, the Keras
@@ -34,7 +34,7 @@ class NeuralNetwork:
 			assert isinstance(vocab_sizes['lemmas'], int)
 			assert isinstance(vocab_sizes['pos_tags'], int)
 			assert isinstance(vocab_sizes['morph'], int)
-			self._init_model(vocab_sizes)
+			self._init_model(vocab_sizes, forms_weights, lemmas_weights)
 		else:
 			self.model = model
 	
@@ -64,7 +64,7 @@ class NeuralNetwork:
 		self.model.save(model_fp, overwrite=True)
 	
 	
-	def _init_model(self, vocab_sizes):
+	def _init_model(self, vocab_sizes, forms_weights=None, lemmas_weights=None):
 		"""
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
@@ -106,7 +106,8 @@ class NeuralNetwork:
 		if vocab_sizes['lemmas']:
 			lemma_a = Input(shape=(1,), dtype='uint16')
 			lemma_b = Input(shape=(1,), dtype='uint16')
-			lemma_embed = Embedding(vocab_sizes['lemmas'], 64, input_length=1)
+			lemma_embed = Embedding(vocab_sizes['lemmas'], 32, input_length=1,
+				weights=None if lemmas_weights is None else [lemmas_weights])
 			
 			lemmas = merge([
 				Flatten()(lemma_embed(lemma_a)),
@@ -118,7 +119,8 @@ class NeuralNetwork:
 		if vocab_sizes['forms']:
 			form_a = Input(shape=(1,), dtype='uint16')
 			form_b = Input(shape=(1,), dtype='uint16')
-			form_embed = Embedding(vocab_sizes['forms'], 64, input_length=1)
+			form_embed = Embedding(vocab_sizes['forms'], 32, input_length=1,
+				weights=None if forms_weights is None else [forms_weights])
 			
 			forms = merge([
 				Flatten()(form_embed(form_a)),

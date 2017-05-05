@@ -153,9 +153,7 @@ class Dataset:
 		"""
 		for sent in self.gen_sentences():
 			graph = nx.DiGraph()
-			graph.add_node(0,
-					FORM='</s>', LEMMA='__root__',
-					UPOSTAG='ROOT', FEATS='_')
+			graph.add_node(0, FORM='</s>', LEMMA='</s>', UPOSTAG='ROOT', FEATS='_')
 			
 			for word in sent:
 				graph.add_node(word.ID,

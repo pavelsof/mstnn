@@ -1,6 +1,8 @@
 import os
 import tempfile
 
+from gensim.models.keyedvectors import KeyedVectors
+
 from code.conllu import Dataset
 from code.features import Extractor
 from code.model import Model
@@ -33,7 +35,8 @@ class Trainer:
 	
 	
 	def train_on(self, dataset, ignore_forms=False, ignore_lemmas=False,
-			ignore_morph=False, epochs=10, batch_size=32, save_checkpoints=False):
+			ignore_morph=False, epochs=10, batch_size=32, save_checkpoints=False,
+			forms_vecs=None, lemmas_vecs=None):
 		"""
 		Trains an mstnn model on the given Dataset. The training's batch size
 		and number of epochs can be specified. If the last flag is set, a model
@@ -47,9 +50,22 @@ class Trainer:
 		extractor = Extractor(ignore_forms, ignore_lemmas, ignore_morph)
 		extractor.read(dataset)
 		
+		if forms_vecs:
+			assert '_' in forms_vecs
+			assert '</s>' in forms_vecs
+			extractor.forms = {form: index
+						for index, form in enumerate(forms_vecs.index2word)}
+		if lemmas_vecs:
+			assert '_' in lemmas_vecs
+			assert '</s>' in lemmas_vecs
+			extractor.lemmas = {lemma: index
+						for index, lemma in enumerate(lemmas_vecs.index2word)}
+		
 		samples, targets = extractor.extract(dataset, include_targets=True)
 		
-		ann = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes())
+		ann = NeuralNetwork(vocab_sizes=extractor.get_vocab_sizes(),
+				forms_weights=None if forms_vecs is None else forms_vecs.syn0,
+				lemmas_weights=None if lemmas_vecs is None else lemmas_vecs.syn0)
 		
 		if save_checkpoints:
 			func = lambda epoch, _: self.save_checkpoint(extractor, ann, epoch)
@@ -93,7 +109,8 @@ class Trainer:
 
 
 def train(model_fp, train_fp, ud_version=2, ignore_forms=False, ignore_lemmas=False,
-			ignore_morph=False, epochs=10, batch_size=32, dev_fp=None, num_best=1):
+			ignore_morph=False, epochs=10, batch_size=32, dev_fp=None, num_best=1,
+			forms_word2vec=None, lemmas_word2vec=None):
 	"""
 	Trains an mstnn model. Expects a path where the models will be written to,
 	and a path to a conllu dataset that will be used for training.
@@ -105,10 +122,16 @@ def train(model_fp, train_fp, ud_version=2, ignore_forms=False, ignore_lemmas=Fa
 	
 	This can be seen as the main function of the cli's train command.
 	"""
+	forms_vecs = None if forms_word2vec is None else \
+			KeyedVectors.load_word2vec_format(forms_word2vec, binary=True)	
+	lemmas_vecs = None if lemmas_word2vec is None else \
+			KeyedVectors.load_word2vec_format(lemmas_word2vec, binary=True)	
+	
 	trainer = Trainer(model_fp)
 	trainer.train_on(Dataset(train_fp, ud_version),
 				ignore_forms, ignore_lemmas, ignore_morph,
-				epochs, batch_size, save_checkpoints=dev_fp is not None)
+				epochs, batch_size, save_checkpoints=dev_fp is not None,
+				forms_vecs=forms_vecs, lemmas_vecs=lemmas_vecs)
 	
 	if dev_fp is not None:
 		trainer.pick_best(Dataset(dev_fp, ud_version), num_best=num_best)

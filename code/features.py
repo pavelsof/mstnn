@@ -52,7 +52,7 @@ class Extractor:
 		
 		self.lemmas = defaultdict(lambda: len(self.lemmas))
 		self.lemmas['_']  # unknown
-		self.lemmas['__root__']  # root
+		self.lemmas['</s>']  # root
 		
 		self.pos_tags = ('ROOT',)  # tuple of possible pos tags
 		
