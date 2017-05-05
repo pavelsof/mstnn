@@ -26,7 +26,7 @@ class Extractor:
 	possibly the targets) to be fed into the neural network.
 	"""
 	
-	def __init__(self, ignore_lemmas=False, ignore_morph=False):
+	def __init__(self, ignore_forms=False, ignore_lemmas=False, ignore_morph=False):
 		"""
 		Constructor. The boolean flags could be used to disable the extraction
 		of certain features.
@@ -42,16 +42,21 @@ class Extractor:
 		the underscore. ID 1 is used for the non-standard root node lemma
 		(__root__).
 		"""
+		self.ignore_forms = ignore_forms
 		self.ignore_lemmas = ignore_lemmas
 		self.ignore_morph = ignore_morph
+		
+		self.forms = defaultdict(lambda: len(self.forms))
+		self.forms['_']  # unknown
+		self.forms['</s>']  # root
+		
+		self.lemmas = defaultdict(lambda: len(self.lemmas))
+		self.lemmas['_']  # unknown
+		self.lemmas['__root__']  # root
 		
 		self.pos_tags = ('ROOT',)  # tuple of possible pos tags
 		
 		self.morph = {}  # key: tuple of possible values
-		
-		self.lemmas = defaultdict(lambda: len(self.lemmas))
-		self.lemmas['_']
-		self.lemmas['__root__']
 	
 	
 	@classmethod
@@ -65,26 +70,27 @@ class Extractor:
 		"""
 		f = h5py.File(model_fp, 'r')
 		
+		forms = json.loads(f['extractor'].attrs['forms'])
+		lemmas = json.loads(f['extractor'].attrs['lemmas'])
 		pos_tags = json.loads(f['extractor'].attrs['pos_tags'])
 		morph = json.loads(f['extractor'].attrs['morph'])
-		lemmas = json.loads(f['extractor'].attrs['lemmas'])
 		
-		try:
-			ignore_lemmas = json.loads(f['extractor'].attrs['ignore_lemmas'])
-			ignore_morph = json.loads(f['extractor'].attrs['ignore_morph'])
-		except KeyError:  # ensure compatibility with older models
-			ignore_lemmas = False
-			ignore_morph = False
+		ignore_forms = json.loads(f['extractor'].attrs['ignore_forms'])
+		ignore_lemmas = json.loads(f['extractor'].attrs['ignore_lemmas'])
+		ignore_morph = json.loads(f['extractor'].attrs['ignore_morph'])
 		
 		f.close()
 		
-		extractor = Extractor(ignore_lemmas, ignore_morph)
+		extractor = Extractor(ignore_forms, ignore_lemmas, ignore_morph)
+		
+		for key, value in forms.items():
+			extractor.forms[key] = value
 		
 		for key, value in lemmas.items():
 			extractor.lemmas[key] = value
 		
-		extractor.morph = {key: tuple(value) for key, value in morph.items()}
 		extractor.pos_tags = tuple(pos_tags)
+		extractor.morph = {key: tuple(value) for key, value in morph.items()}
 		
 		return extractor
 	
@@ -101,10 +107,12 @@ class Extractor:
 		
 		group = f.create_group('extractor')
 		
+		group.attrs['forms'] = json.dumps(dict(self.forms), ensure_ascii=False)
 		group.attrs['lemmas'] = json.dumps(dict(self.lemmas), ensure_ascii=False)
-		group.attrs['morph'] = json.dumps(dict(self.morph), ensure_ascii=False)
 		group.attrs['pos_tags'] = json.dumps(list(self.pos_tags), ensure_ascii=False)
+		group.attrs['morph'] = json.dumps(dict(self.morph), ensure_ascii=False)
 		
+		group.attrs['ignore_forms'] = json.dumps(self.ignore_forms, ensure_ascii=False)
 		group.attrs['ignore_lemmas'] = json.dumps(self.ignore_lemmas, ensure_ascii=False)
 		group.attrs['ignore_morph'] = json.dumps(self.ignore_morph, ensure_ascii=False)
 		
@@ -117,17 +125,26 @@ class Extractor:
 		Reads the data provided by the given conllu.Dataset instance and
 		populates self.pos_tag, self.morph, and self.lemmas.
 		"""
+		form_counts = defaultdict(lambda: 0)
 		lemma_counts = defaultdict(lambda: 0)
 		pos_tags = set(self.pos_tags)
 		morph = defaultdict(set)
 		
 		for sent in dataset.gen_sentences():
 			for word in sent:
-				pos_tags.add(word.UPOSTAG)
+				form_counts[word.FORM] += 1
 				lemma_counts[word.LEMMA] += 1
+				
+				pos_tags.add(word.UPOSTAG)
+				
 				for key, values in word.FEATS.items():
 					for value in values:
 						morph[key].add(value)
+		
+		if not self.ignore_forms:
+			for form, count in form_counts.items():
+				if count > 1:
+					self.forms[form]
 		
 		if not self.ignore_lemmas:
 			for lemma, count in lemma_counts.items():
@@ -155,9 +172,21 @@ class Extractor:
 		morph_size = sum([len(value) for value in self.morph.values()])
 		
 		return {
+			'forms': 0 if self.ignore_forms else len(self.forms),
 			'lemmas': 0 if self.ignore_lemmas else len(self.lemmas),
 			'morph': morph_size,
 			'pos_tags': len(self.pos_tags) + 1}
+	
+	
+	def featurise_form(self, form):
+		"""
+		Returns a positive integer uniquely identifying the given form. If the
+		form has not been found during the reading phase, returns 0.
+		"""
+		if form not in self.forms:
+			return 0
+		
+		return self.forms[form]
 	
 	
 	def featurise_lemma(self, lemma):
@@ -218,6 +247,8 @@ class Extractor:
 		values are numpy arrays. The targets are a numpy array of 0s and 1s.
 		"""
 		keys = list(EDGE_FEATURES)
+		if self.ignore_forms:
+			keys = itertools.filterfalse(lambda x: x.startswith('form'), keys)
 		if self.ignore_lemmas:
 			keys = itertools.filterfalse(lambda x: x.startswith('lemma'), keys)
 		if self.ignore_morph:
@@ -230,6 +261,12 @@ class Extractor:
 			nodes = graph.nodes()
 			edges = graph.edges()
 			
+			if not self.ignore_forms:
+				forms = {i: self.featurise_form(graph.node[i]['FORM']) for i in nodes}
+			
+			if not self.ignore_lemmas:
+				lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
+			
 			pos_tags = {i: self.featurise_pos_tag(graph.node[i]['UPOSTAG']) for i in nodes}
 			pos_tags[-2] = 0
 			pos_tags[-1] = 0
@@ -241,10 +278,17 @@ class Extractor:
 				morph[-1] = self.featurise_morph('_')
 				morph[len(nodes)] = self.featurise_morph('_')
 			
-			if not self.ignore_lemmas:
-				lemmas = {i: self.featurise_lemma(graph.node[i]['LEMMA']) for i in nodes}
-			
 			for a, b in itertools.permutations(nodes, 2):
+				samples['B-A'].append(b-a)
+				
+				if not self.ignore_forms:
+					samples['form A'].append(forms[a])
+					samples['form B'].append(forms[b])
+				
+				if not self.ignore_lemmas:
+					samples['lemma A'].append(lemmas[a])
+					samples['lemma B'].append(lemmas[b])
+				
 				samples['pos'].append([
 					pos_tags[a-2], pos_tags[a-1], pos_tags[a], pos_tags[a+1], pos_tags[a+2],
 					pos_tags[b-2], pos_tags[b-1], pos_tags[b], pos_tags[b+1], pos_tags[b+2]])
@@ -258,18 +302,12 @@ class Extractor:
 					samples['morph B'].append(morph[b])
 					samples['morph B+1'].append(morph[b+1])
 				
-				if not self.ignore_lemmas:
-					samples['lemma A'].append(lemmas[a])
-					samples['lemma B'].append(lemmas[b])
-				
-				samples['B-A'].append(b-a)
-				
 				if include_targets:
 					targets.append((a, b) in edges)
 		
 		samples_ = {}
 		for key, value in samples.items():
-			if key.startswith('lemma'):
+			if key.startswith('lemma') or key.startswith('form'):
 				samples_[key] = np.array(value, dtype='uint16')
 			else:
 				samples_[key] = np.array(value, dtype='uint8')

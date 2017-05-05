@@ -14,7 +14,7 @@ EDGE_FEATURES = tuple([
 	'pos',
 	'morph A-1', 'morph A', 'morph A+1',
 	'morph B-1', 'morph B', 'morph B+1',
-	'lemma A', 'lemma B', 'B-A'])
+	'lemma A', 'lemma B', 'form A', 'form B', 'B-A'])
 
 
 
@@ -30,9 +30,10 @@ class NeuralNetwork:
 		are ignored otherwise).
 		"""
 		if model is None:
+			assert isinstance(vocab_sizes['forms'], int)
 			assert isinstance(vocab_sizes['lemmas'], int)
-			assert isinstance(vocab_sizes['morph'], int)
 			assert isinstance(vocab_sizes['pos_tags'], int)
+			assert isinstance(vocab_sizes['morph'], int)
 			self._init_model(vocab_sizes)
 		else:
 			self.model = model
@@ -113,6 +114,18 @@ class NeuralNetwork:
 			
 			inputs.extend([lemma_a, lemma_b])
 			input_branches.append(lemmas)
+		
+		if vocab_sizes['forms']:
+			form_a = Input(shape=(1,), dtype='uint16')
+			form_b = Input(shape=(1,), dtype='uint16')
+			form_embed = Embedding(vocab_sizes['forms'], 64, input_length=1)
+			
+			forms = merge([
+				Flatten()(form_embed(form_a)),
+				Flatten()(form_embed(form_b))], mode='concat')
+			
+			inputs.extend([form_a, form_b])
+			input_branches.append(forms)
 		
 		rel_pos_raw = Input(shape=(1,))
 		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)

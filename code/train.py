@@ -32,8 +32,8 @@ class Trainer:
 		self.checkpoints.append(path)
 	
 	
-	def train_on(self, dataset, ignore_lemmas=False, ignore_morph=False,
-							epochs=10, batch_size=32, save_checkpoints=False):
+	def train_on(self, dataset, ignore_forms=False, ignore_lemmas=False,
+			ignore_morph=False, epochs=10, batch_size=32, save_checkpoints=False):
 		"""
 		Trains an mstnn model on the given Dataset. The training's batch size
 		and number of epochs can be specified. If the last flag is set, a model
@@ -44,7 +44,7 @@ class Trainer:
 		initing the extractor and the neural network in the constructor and
 		altering the former's read method.
 		"""
-		extractor = Extractor(ignore_lemmas, ignore_morph)
+		extractor = Extractor(ignore_forms, ignore_lemmas, ignore_morph)
 		extractor.read(dataset)
 		
 		samples, targets = extractor.extract(dataset, include_targets=True)
@@ -92,8 +92,8 @@ class Trainer:
 
 
 
-def train(model_fp, train_fp, ud_version=2, ignore_lemmas=False, ignore_morph=False,
-							epochs=10, batch_size=32, dev_fp=None, num_best=1):
+def train(model_fp, train_fp, ud_version=2, ignore_forms=False, ignore_lemmas=False,
+			ignore_morph=False, epochs=10, batch_size=32, dev_fp=None, num_best=1):
 	"""
 	Trains an mstnn model. Expects a path where the models will be written to,
 	and a path to a conllu dataset that will be used for training.
@@ -107,8 +107,8 @@ def train(model_fp, train_fp, ud_version=2, ignore_lemmas=False, ignore_morph=Fa
 	"""
 	trainer = Trainer(model_fp)
 	trainer.train_on(Dataset(train_fp, ud_version),
-				ignore_lemmas, ignore_morph, epochs, batch_size,
-				save_checkpoints=dev_fp is not None)
+				ignore_forms, ignore_lemmas, ignore_morph,
+				epochs, batch_size, save_checkpoints=dev_fp is not None)
 	
 	if dev_fp is not None:
 		trainer.pick_best(Dataset(dev_fp, ud_version), num_best=num_best)

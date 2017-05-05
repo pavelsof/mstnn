@@ -11,7 +11,7 @@ class NeuralNetworkTestCase(TestCase):
 	
 	def setUp(self):
 		self.net = NeuralNetwork(vocab_sizes={
-			'lemmas': 42, 'morph': 104, 'pos_tags': 18})
+			'forms': 42, 'lemmas': 42, 'morph': 104, 'pos_tags': 18})
 	
 	
 	def test_model_files_error(self):

@@ -44,7 +44,7 @@ class Cli:
 		def _train(args):
 			from code.train import train
 			train(args.model_file, args.train_file, args.ud_version,
-					args.ignore_lemmas, args.ignore_morph,
+					args.ignore_forms, args.ignore_lemmas, args.ignore_morph,
 					args.epochs, args.batch_size,
 					dev_fp=args.dev_file, num_best=args.keep)
 		
@@ -74,6 +74,8 @@ class Cli:
 			'the UD version to use; either 1 or 2 (the default); '
 			'also applied to the development dataset, if such'))
 		
+		subp.add_argument('--ignore-forms', action='store_true', help=(
+			'do not use word forms in the model'))
 		subp.add_argument('--ignore-lemmas', action='store_true', help=(
 			'do not use lemmas in the model'))
 		subp.add_argument('--ignore-morph', action='store_true', help=(
