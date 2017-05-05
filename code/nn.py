@@ -96,7 +96,8 @@ class NeuralNetwork:
 			morph = merge([
 				morph_a_prev, morph_a, morph_a_next,
 				morph_b_prev, morph_b, morph_b_next], mode='concat')
-			morph = Dense(64, init='uniform', activation='relu')(morph)
+			morph = Dense(32, init='he_uniform', activation='relu')(morph)
+			morph = Dropout(0.25)(morph)
 			
 			inputs.extend([
 				morph_a_prev, morph_a, morph_a_next,
@@ -122,7 +123,8 @@ class NeuralNetwork:
 			input_branches.append(forms)
 		
 		rel_pos_raw = Input(shape=(1,))
-		rel_pos = Dense(32, init='uniform', activation='relu')(rel_pos_raw)
+		rel_pos = Dense(32, init='he_uniform', activation='relu')(rel_pos_raw)
+		rel_pos = Dropout(0.25)(rel_pos)
 		inputs.append(rel_pos_raw)
 		input_branches.append(rel_pos)
 		
@@ -131,7 +133,7 @@ class NeuralNetwork:
 		x = Dropout(0.25)(x)
 		x = Dense(128, init='he_uniform', activation='relu')(x)
 		x = Dropout(0.25)(x)
-		output = Dense(1, init='uniform', activation='sigmoid')(x)
+		output = Dense(1, init='he_uniform', activation='sigmoid')(x)
 		
 		self.model = Model(input=inputs, output=output)
 		
