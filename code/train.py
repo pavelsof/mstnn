@@ -123,14 +123,14 @@ def train(model_fp, train_fp, ud_version=2, ignore_forms=False, ignore_lemmas=Fa
 	This can be seen as the main function of the cli's train command.
 	"""
 	forms_vecs = None if forms_word2vec is None else \
-			KeyedVectors.load_word2vec_format(forms_word2vec, binary=True)	
+			KeyedVectors.load_word2vec_format(forms_word2vec, binary=True)
 	lemmas_vecs = None if lemmas_word2vec is None else \
-			KeyedVectors.load_word2vec_format(lemmas_word2vec, binary=True)	
+			KeyedVectors.load_word2vec_format(lemmas_word2vec, binary=True)
 	
 	trainer = Trainer(model_fp)
 	trainer.train_on(Dataset(train_fp, ud_version),
 				ignore_forms, ignore_lemmas, ignore_morph,
-				epochs, batch_size, save_checkpoints=dev_fp is not None,
+				epochs, batch_size, save_checkpoints=True,
 				forms_vecs=forms_vecs, lemmas_vecs=lemmas_vecs)
 	
 	if dev_fp is not None:
