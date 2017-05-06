@@ -1,5 +1,5 @@
 """
-Handles reading and writing datasets in the CoNLL-U format (version 2) [0]:
+Handles reading and writing datasets in the CoNLL-U format (v1 and v2) [0]:
 	
 	dataset = conllu.Dataset(path)
 	graphs = [graph for graph in dataset.gen_graphs()]
@@ -88,16 +88,18 @@ class Dataset:
 			assert all([c.isdigit() or c in ('-', '.') for c in line[0]])
 			return None
 		
-		line[0] = int(line[0])
-		line[6] = int(line[6])
+		line[0] = int(line[0])  # id
 		
-		assert line[3] in self.POS_TAGS
+		assert line[3] in self.POS_TAGS  # upostag
 		
-		if line[5] == '_':
+		if line[5] == '_':  # feats
 			line[5] = {}
 		else:
 			line[5] = {key: frozenset(value.split(','))
 				for key, value in map(lambda x: x.split('='), line[5].split('|'))}
+		
+		if line[6] != '_':  # head
+			line[6] = int(line[6])
 		
 		return Word._make(line)
 	
@@ -145,8 +147,8 @@ class Dataset:
 		an edge attribute.
 		
 		Unlike self.gen_sentences, the output here has an explicit root node
-		with its own POS tag (ROOT) and lemma (__root__) which are not part of
-		the UD standard, but still needed for the purposes of mstnn.
+		with its form (\xa0), lemma (\xa0), and POS tag (ROOT) which are not
+		part of the UD standard, but still needed for the purposes of mstnn.
 		
 		Raises a ConlluError if the file does not conform to the CoNLL-U format
 		of the version specified by self.ud_version.
@@ -160,7 +162,7 @@ class Dataset:
 						FORM=word.FORM, LEMMA=word.LEMMA,
 						UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
 				
-				if not edgeless:
+				if not edgeless and word.HEAD != '_':
 					graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
 			
 			yield graph
@@ -210,8 +212,8 @@ class Dataset:
 		Writes the sentences to the dataset's file path. The sentences are
 		expected to be a sequence of sequences of Word named tuples.
 		
-		Raises ConlluError if the file cannot be written or if the sentences do
-		not conform to the spec.
+		Raises a ConlluError if the file cannot be written or if the sentences
+		do not conform to the spec.
 		"""
 		try:
 			with open(self.file_path, 'w', encoding='utf-8') as f:
@@ -229,11 +231,11 @@ class Dataset:
 	def write_graphs(self, graphs):
 		"""
 		Writes the given sentence graphs to the dataset's file path. The graphs
-		should be a sequence of nx.DiGraph instances, each conforming to the
-		spec outlined in self.gen_graphs.
+		should be a sequence of DiGraph instances, each conforming to the spec
+		outlined in self.gen_graphs.
 		
-		Raises ConlluError if the file cannot be written or if the graphs do not
-		conform to the spec.
+		Raises a ConlluError if the file cannot be written or if the graphs do
+		not conform to the spec.
 		"""
 		sentences = []
 		
