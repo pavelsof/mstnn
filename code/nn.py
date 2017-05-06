@@ -127,9 +127,9 @@ class NeuralNetwork:
 		input_branches.append(rel_pos)
 		
 		x = merge(input_branches, mode='concat')
-		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dense(256, init='he_uniform', activation='relu')(x)
 		x = Dropout(0.25)(x)
-		x = Dense(128, init='he_uniform', activation='relu')(x)
+		x = Dense(256, init='he_uniform', activation='relu')(x)
 		x = Dropout(0.25)(x)
 		output = Dense(1, init='uniform', activation='sigmoid')(x)
 		
