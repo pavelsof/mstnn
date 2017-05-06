@@ -84,9 +84,26 @@ class Model:
 			new_graph.add_nodes_from(edgeless_graph.nodes(data=True))
 			new_graph.add_edges_from(tree.edges)
 			
-			parsed.append(new_graph)
+			parsed.append(self.post_parse(new_graph))
 		
 		return parsed
+	
+	
+	@staticmethod
+	def post_parse(graph):
+		"""
+		Ensures that there are no parsed sentences with more than one word that
+		has the root as its head. Expects and returns a DiGraph instance.
+		"""
+		if len(graph[0]) > 1:
+			stoyan = min(graph[0].keys())
+			others = list(filter(lambda x: x != stoyan, graph[0].keys()))
+			
+			for child in others:
+				graph.remove_edge(0, child)
+				graph.add_edge(stoyan, child, DEPREL='parataxis')
+		
+		return graph
 
 
 

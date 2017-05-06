@@ -98,7 +98,7 @@ class Graph:
 		nx_graph.add_edges_from(self.edges)
 		
 		try:
-			cycle = nx.find_cycle(nx_graph)
+			cycle = nx.find_cycle(nx_graph, orientation='ignore')
 		except nx.NetworkXNoCycle:
 			raise ValueError('Could not find a cycle')
 		
