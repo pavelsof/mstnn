@@ -84,6 +84,9 @@ class Model:
 			new_graph.add_nodes_from(edgeless_graph.nodes(data=True))
 			new_graph.add_edges_from(tree.edges)
 			
+			for multiword in edgeless_graph.graph.values():
+				new_graph.graph[multiword.ID] = multiword
+			
 			parsed.append(self.post_parse(new_graph))
 		
 		return parsed

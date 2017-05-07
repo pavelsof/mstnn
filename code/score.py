@@ -44,7 +44,7 @@ class Scorer:
 			sent_std = standard[i]
 			
 			if len(sent_par) != len(sent_std):
-				raise ScoreError('The number of words differ in sentence {}'.format(i))
+				raise ScoreError('The number of words differ in sentence {}'.format(i+1))
 			
 			correct = 0
 			

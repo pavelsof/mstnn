@@ -84,13 +84,12 @@ class Dataset:
 		"""
 		assert len(line) == 10 and all([item for item in line])
 		
-		if not line[0].isdigit():
+		if line[0].isdigit():  # id
+			line[0] = int(line[0])
+		else:
 			assert all([c.isdigit() or c in ('-', '.') for c in line[0]])
-			return None
 		
-		line[0] = int(line[0])  # id
-		
-		assert line[3] in self.POS_TAGS  # upostag
+		assert line[3] in self.POS_TAGS or line[3] == '_'  # upostag
 		
 		if line[5] == '_':  # feats
 			line[5] = {}
@@ -104,7 +103,7 @@ class Dataset:
 		return Word._make(line)
 	
 	
-	def gen_sentences(self):
+	def gen_sentences(self, include_multiwords=False):
 		"""
 		Generator that yields a tuple of Word named tuples for each sentence in
 		the dataset.
@@ -122,7 +121,7 @@ class Dataset:
 					
 					elif line:
 						word = self._read_word(line.split('\t'))
-						if word:
+						if include_multiwords or type(word.ID) is int:
 							sent.append(word)
 					
 					else:  # empty lines mark sentence boundaries
@@ -153,17 +152,20 @@ class Dataset:
 		Raises a ConlluError if the file does not conform to the CoNLL-U format
 		of the version specified by self.ud_version.
 		"""
-		for sent in self.gen_sentences():
+		for sent in self.gen_sentences(include_multiwords=True):
 			graph = nx.DiGraph()
 			graph.add_node(0, FORM='\xa0', LEMMA='\xa0', UPOSTAG='ROOT', FEATS='_')
 			
 			for word in sent:
-				graph.add_node(word.ID,
-						FORM=word.FORM, LEMMA=word.LEMMA,
-						UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
-				
-				if not edgeless and word.HEAD != '_':
-					graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
+				if type(word.ID) is int:
+					graph.add_node(word.ID,
+							FORM=word.FORM, LEMMA=word.LEMMA,
+							UPOSTAG=word.UPOSTAG, FEATS=word.FEATS)
+					
+					if not edgeless and word.HEAD != '_':
+						graph.add_edge(word.HEAD, word.ID, DEPREL=word.DEPREL)
+				else:
+					graph.graph[word.ID] = word
 			
 			yield graph
 	
@@ -264,6 +266,14 @@ class Dataset:
 					edge[2]['DEPREL'] if 'DEPREL' in edge[2] else '_',
 					data['DEPS'] if 'DEPS' in data else '_',
 					data['MISC'] if 'MISC' in data else '_'))
+			
+			for key, word in graph.graph.items():
+				try:
+					key = int(key.split('-')[0])
+					i = next((i for i, w in enumerate(sentence) if w.ID == key))
+					sentence.insert(i, word)
+				except (StopIteration, ValueError):
+					raise ConlluError('Graphs do not conform to the spec')
 			
 			sentences.append(sentence)
 		
