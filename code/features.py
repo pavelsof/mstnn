@@ -155,6 +155,11 @@ class Extractor:
 		
 		if not self.ignore_morph:
 			self.morph = {key: tuple(sorted(value)) for key, value in morph.items()}
+			
+			if not self.morph:
+				raise ValueError((
+					'Could not find morphological features in the dataset; '
+					'please use the --ignore-morph flag'))
 	
 	
 	def get_vocab_sizes(self):

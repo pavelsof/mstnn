@@ -105,7 +105,9 @@ class NeuralNetwork:
 		
 		if vocab_sizes['lemmas']:
 			lemma_input = Input(shape=(2,), dtype='uint16')
-			lemma_embed = Embedding(vocab_sizes['lemmas'], 32, input_length=2,
+			lemma_embed = Embedding(vocab_sizes['lemmas'],
+				32 if lemmas_weights is None else lemmas_weights.shape[-1],
+				input_length=2,
 				weights=None if lemmas_weights is None else [lemmas_weights])
 			lemmas = Flatten()(lemma_embed(lemma_input))
 			
@@ -114,7 +116,9 @@ class NeuralNetwork:
 		
 		if vocab_sizes['forms']:
 			form_input = Input(shape=(2,), dtype='uint16')
-			form_embed = Embedding(vocab_sizes['forms'], 32, input_length=2,
+			form_embed = Embedding(vocab_sizes['forms'],
+				32 if forms_weights is None else forms_weights.shape[-1],
+				input_length=2,
 				weights=None if forms_weights is None else [forms_weights])
 			forms = Flatten()(form_embed(form_input))
 			
