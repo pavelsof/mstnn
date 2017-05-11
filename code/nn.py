@@ -69,10 +69,15 @@ class NeuralNetwork:
 		Inits and compiles the Keras model. This method is only called when
 		training; for testing, the Keras model is loaded.
 		
+		The vocab_sizes dict should specify the dimensions of the form, lemma,
+		POS tag, and morphology input layers. The form and/or lemma embedding
+		layers can be supplied with initial weights.
+		
 		The network takes as input the POS tags and the morphological features
 		of two nodes and their immediate neighbours (the context), as well as
-		the nodes' lemmas and their relative position to each other, and tries
-		to predict the probability of an edge between the two.
+		the nodes' forms, lemmas, and positions in the sentence, and tries to
+		predict the probability of an edge between the two. Except for the POS
+		tags and the positions, the other inputs are optional.
 		"""
 		input_branches = []
 		inputs = []
@@ -147,8 +152,8 @@ class NeuralNetwork:
 	def train(self, samples, targets, epochs=10, batch_size=32, on_epoch_end=None):
 		"""
 		Trains the network. The first arg should be a dict where the keys are
-		EDGE_FEATURES and the values numpy arrays. The second one should be a
-		single numpy array of 0s and 1s.
+		EDGE_FEATURES (or a subset of those) and the values numpy arrays. The
+		second one should be a single numpy array of 0s and 1s.
 		
 		The batch size and the number of training epochs are directly passed
 		onto the keras model's fit function.
@@ -171,8 +176,8 @@ class NeuralNetwork:
 	def calc_probs(self, samples):
 		"""
 		Calculates the probabilities of each edge. The arg should be a dict
-		where the keys are EDGE_FEATURES and the values are the respective
-		numpy arrays.
+		where the keys are EDGE_FEATURES (or a subset of those) and the values
+		are the respective numpy arrays.
 		"""
 		samples = [samples[key] for key in EDGE_FEATURES if key in samples]
 		

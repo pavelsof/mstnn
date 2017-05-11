@@ -23,7 +23,7 @@ class Cli:
 		arguments and which will be called if the respective command is called.
 		"""
 		self.parser = argparse.ArgumentParser(description=(
-			'what do you want to achieve, stranger?'))
+			'the parse is darc and full of errors'))
 		
 		self.subparsers = self.parser.add_subparsers(dest='command',
 			title='subcommands')
@@ -37,9 +37,8 @@ class Cli:
 	
 	def _init_train(self):
 		"""
-		Inits the subparser that handles the train command. The latter expects
-		a conllu data file to train on and a model file to save the output of
-		the training into.
+		Inits the subparser that handles the train command. The latter is used
+		to train one or more mstnn models on a given training conllu dataset.
 		"""
 		def _train(args):
 			from code.train import train
@@ -94,9 +93,8 @@ class Cli:
 	
 	def _init_parse(self):
 		"""
-		Inits the subparser that handles the parse command. The latter expects
-		a previously trained model, a conllu dataset which to parse, and a path
-		to write the output to.
+		Inits the subparser that handles the parse command. The latter is used
+		to parse a conllu dataset using a previously trained mstnn model.
 		"""
 		def _parse(args):
 			from code.model import parse
@@ -151,7 +149,7 @@ class Cli:
 	def _init_diff(self):
 		"""
 		Inits the subparser that handles the diff command. The latter expects
-		two conllu files and prints a (hopefully) useful report about the
+		two conllu datasets and prints a (hopefully) useful report about the
 		differences in the parses that have such (i.e. parses that are the same
 		are skipped).
 		"""

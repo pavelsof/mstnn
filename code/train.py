@@ -38,10 +38,13 @@ class Trainer:
 			ignore_morph=False, epochs=10, batch_size=32, save_checkpoints=False,
 			forms_vecs=None, lemmas_vecs=None):
 		"""
-		Trains an mstnn model on the given Dataset. The training's batch size
-		and number of epochs can be specified. If the last flag is set, a model
-		is saved at the end of each training epoch. Lemmas and morphology can
-		be ignored as features.
+		Trains one or more mstnn models on the given Dataset. The training's
+		batch size and number of epochs can be specified. Word forms, lemmas,
+		and/or morphology can be ignored as features. Pre-trained form and/or
+		lemma embeddings can be supplied via KeyedVectors instances.
+		
+		If the save_checkpoints flag is set, a model is saved at the end of
+		each training epoch; otherwise the last epoch's weights are used.
 		
 		This method could be altered so that it can be called multiple times by
 		initing the extractor and the neural network in the constructor and
@@ -113,12 +116,16 @@ def train(model_fp, train_fp, ud_version=2, ignore_forms=False, ignore_lemmas=Fa
 			forms_word2vec=None, lemmas_word2vec=None):
 	"""
 	Trains an mstnn model. Expects a path where the models will be written to,
-	and a path to a conllu dataset that will be used for training.
+	and a path to a conllu dataset that will be used for training. The epochs,
+	batch_size, and ignore_* args are passed on to the train_on method.
 	
-	The optional path should specify a development dataset to check the trained
-	model against. The UD version would apply to both datasets. The last
-	keyword arg specifies the number of best performing checkpoints to keep
-	when there is a development dataset to check against.
+	The dev_fp optional path should specify a development dataset to check the
+	trained model against. The UD version would apply to both datasets. The
+	num_best keyword arg specifies the number of best performing checkpoints to
+	keep when there is a development dataset to check against.
+	
+	Paths to pre-trained form and/or lemma embeddings can be specified. These
+	are expected to be in binary word2vec format.
 	
 	This can be seen as the main function of the cli's train command.
 	"""

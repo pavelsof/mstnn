@@ -40,7 +40,7 @@ class Extractor:
 		The lemmas dict provides unique IDs to the lemmas found in the dataset
 		during the reading phase. ID 0 is used for unrecognised lemmas, hence
 		the underscore. ID 1 is used for the non-standard root node lemma
-		(__root__).
+		(\xa0). The same applies for the forms dict.
 		"""
 		self.ignore_forms = ignore_forms
 		self.ignore_lemmas = ignore_lemmas
@@ -97,9 +97,9 @@ class Extractor:
 	
 	def write_to_model_file(self, model_fp):
 		"""
-		Appends to the specified hdf5 file, storing self.pos_tag, self.morph
-		and self.lemmas.  Thus, an identical Extractor can be later restored
-		using the above class method.
+		Appends to the specified hdf5 file, storing the instance's properties.
+		Thus, an identical Extractor can be later restored using the above
+		class method.
 		
 		Raises an OSError if the file cannot be written.
 		"""
@@ -123,7 +123,7 @@ class Extractor:
 	def read(self, dataset):
 		"""
 		Reads the data provided by the given conllu.Dataset instance and
-		populates self.pos_tag, self.morph, and self.lemmas.
+		populates self.forms, self.lemmas, self.pos_tag, and self.morph.
 		"""
 		form_counts = defaultdict(lambda: 0)
 		lemma_counts = defaultdict(lambda: 0)
@@ -164,13 +164,12 @@ class Extractor:
 	
 	def get_vocab_sizes(self):
 		"""
-		Returns a {} containing: (*) the number of lemma IDs, i.e. the number
-		of lemmas found during reading + 1 (for the unrecognised lemmas ID);
-		(*) the number of POS tags + 1 (for the tags of the padding); (*) the
-		size of the vectors returned by the featurise_morph method.
+		Returns a {} containing: the number of form IDs, the number of lemma
+		IDs, the number of POS tags, and the size of the vectors returned by
+		the featurise_morph method.
 		
-		These are used as parameters the POS and lemma embedding and the
-		morphology input layers of the neural network.
+		These are used as parameters for the form, lemma, and POS tag embedding
+		and the morphology input layers of the neural network.
 		
 		This method assumes that the reading phase is already completed.
 		"""
@@ -248,8 +247,9 @@ class Extractor:
 		Assumes that the latter is already read, i.e. this Extractor instance
 		has already populated its pos_tags, lemmas, and morph properties.
 		
-		The samples comprise a dict where the keys are nn.EDGE_FEATURES and the
-		values are numpy arrays. The targets are a numpy array of 0s and 1s.
+		The samples comprise a dict where the keys are nn.EDGE_FEATURES (or a
+		subset of those) and the values are numpy arrays. The targets are a
+		numpy array of 0s and 1s.
 		"""
 		keys = list(EDGE_FEATURES)
 		if self.ignore_forms:
